@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Access Denied - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+  <div class="card" style="max-width: 500px; width: 100%; text-align: center; border-color: var(--danger-color);">
+    <div style="font-size: 3.5rem; color: var(--danger-color); margin-bottom: 1rem;">⚠️</div>
+    <h2 style="font-family: var(--font-header); margin-bottom: 0.75rem; color: #fca5a5;">Permission Error</h2>
+    <p style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 1.5rem;"><%= message %></p>
+    
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+      <a href="/" class="btn btn-primary">Return to Dashboard</a>
+      <a href="/logout" class="btn btn-secondary">Logout</a>
+    </div>
+  </div>
+</body>
+</html>
+

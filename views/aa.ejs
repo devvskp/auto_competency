@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Approving Authority Portal - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      <img src="/images/ir.png" alt="Logo" onerror="this.src='/images/ir.png'">
+      <h1>Railway Competency System</h1>
+    </div>
+    <div class="nav-user">
+      <div class="user-tag">
+        <span class="user-name-text">
+          <%= user.name %>
+        </span>
+        <span class="role-badge">Approver / AA</span>
+      </div>
+      <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading"
+      style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 250px;">
+        <h2 style="margin: 0 0 0.25rem 0;">Approving Authority Dashboard</h2>
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.95rem;">Evaluate pending training completions,
+          grant competency certificates, and sign digital credentials.</p>
+      </div>
+      <div style="flex-shrink: 0;">
+        <div class="goal-badge">
+          <span class="goal-number">
+            <%= historyCertificates.filter(h=> h.status === 'APPROVED').length %>
+          </span>
+          <span class="goal-label">Certified</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Notifications -->
+    <div id="alerts-container"></div>
+
+    <!-- Pending Recommendations -->
+    <div class="card">
+      <div class="card-title"
+        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <span>Pending Approvals</span>
+        <button id="btn-bulk-approve" class="btn btn-success"
+          style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
+          Grant/Approve Selected (<span id="bulk-select-count">0</span>)
+        </button>
+      </div>
+      <% if (pendingCertificates.length===0) { %>
+        <div
+          style="text-align: center; padding: 2rem; border-radius: 12px; font-weight: 500; font-size: 1rem; border: 1px solid rgba(16, 185, 129, 0.25); background: rgba(16, 185, 129, 0.08); color: #34d399; display: flex; align-items: center; justify-content: center; gap: 0.75rem; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05); margin-top: 0.5rem;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+            style="flex-shrink: 0; color: var(--success-color);">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+          No pending competency certificate requests found.
+        </div>
+        <% } else { %>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width: 45px; text-align: center;"><input type="checkbox" id="select-all-pending"
+                      style="transform: scale(1.2); cursor: pointer;"></th>
+                  <th>CMS ID</th>
+                  <th>Name</th>
+                  <th>Desig</th>
+                  <th>Forwarded By</th>
+                  <th>C Date</th>
+                  <th>Validity Expiry</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% pendingCertificates.forEach(c=> { %>
+                  <tr>
+                    <td data-label="Select" style="text-align: center; vertical-align: middle;">
+                      <input type="checkbox" value="<%= c.id %>" class="pending-checkbox"
+                        style="transform: scale(1.2); cursor: pointer;">
+                    </td>
+                    <td data-label="CMS ID">
+                      <code
+                        style="font-size: 0.82rem; color: #60a5fa;"><%= (c.employee_id || '').toUpperCase() %></code>
+                    </td>
+                    <td data-label="Name" style="font-weight: 600;">
+                      <%= c.employee_name %>
+                    </td>
+                    <td data-label="Desig">
+                      <%= c.designation %>
+                    </td>
+                    <td data-label="Forwarded By">
+                      <%= c.forwarded_by_name %> (<code><%= c.forwarded_by %></code>)
+                    </td>
+                    <td data-label="C Date">
+                      <%= formatIST(c.certified_date) %>
+                    </td>
+                    <td data-label="Validity Expiry">
+                      <%= formatIST(c.valid_upto) %>
+                    </td>
+                    <td data-label="Actions">
+                      <div class="table-actions">
+                        <form action="/aa/certificates/approve/<%= c.id %>" method="POST" style="margin: 0;">
+                          <button type="submit" class="btn btn-success"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
+                            Grant/Approve
+                          </button>
+                        </form>
+                        <form action="/aa/certificates/reject/<%= c.id %>" method="POST" style="margin: 0;"
+                          onsubmit="return confirm('Are you sure you want to reject this request?');">
+                          <button type="submit" class="btn btn-danger"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: var(--danger-color);">
+                            Reject
+                          </button>
+                        </form>
+                      </div>
+                    </td>
+                  </tr>
+                  <% }) %>
+              </tbody>
+            </table>
+          </div>
+          <% } %>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>Processed Certificates History</span>
+        <button type="submit" form="print-batch-form" class="btn btn-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          Print Selected
+        </button>
+      </div>
+      <!-- Search & Filter Controls -->
+      <div class="filters-bar"
+        style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); align-items: flex-end;">
+        <div style="flex: 1.5; min-width: 200px;">
+          <label for="filter-name"
+            style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Filter
+            by Employee Name</label>
+          <input type="text" id="filter-name" class="form-control" placeholder="Type name to search..."
+            oninput="applyFilters()" style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+        </div>
+        <div style="flex: 1.2; min-width: 200px;">
+          <label for="filter-date-from"
+            style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Certified
+            Date (From)</label>
+          <input type="date" id="filter-date-from" class="form-control" onchange="applyFilters()"
+            style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-height: 38px;">
+        </div>
+        <div style="flex: 1; min-width: 150px;">
+          <label for="filter-status"
+            style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Filter
+            by Status</label>
+          <select id="filter-status" class="form-control" onchange="applyFilters()"
+            style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+            <option value="">All Statuses</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </div>
+        <div style="min-width: 120px;">
+          <button type="button" class="btn btn-secondary" onclick="resetAllFilters()"
+            style="padding: 0.5rem 1rem; font-size: 0.9rem; width: 100%; height: 41px;">Reset Filters</button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+                <th>Cert No</th>
+                <th>CMS ID</th>
+                <th>Name</th>
+                <th>Desig</th>
+                <th>C Date</th>
+                <th>Status</th>
+                <th>Action Taken On</th>
+                <th>Link</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (historyCertificates.length===0) { %>
+                <tr>
+                  <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                    No processed certificate history found.
+                  </td>
+                </tr>
+                <% } else { %>
+                  <% historyCertificates.forEach(h=> {
+                    const cDate = new Date(h.certified_date);
+                    const dataDateStr = `${cDate.getFullYear()}-${String(cDate.getMonth() + 1).padStart(2,
+                    '0')}-${String(cDate.getDate()).padStart(2, '0')}`;
+                    %>
+                    <tr class="cert-row" data-name="<%= h.employee_name.toLowerCase() %>" data-date="<%= dataDateStr %>"
+                      data-status="<%= h.status %>">
+                      <td data-label="Select">
+                        <% if (h.status==='APPROVED' ) { %>
+                          <input type="checkbox" name="ids" value="<%= h.id %>" class="cert-checkbox">
+                          <% } else { %>
+                            <input type="checkbox" disabled>
+                            <% } %>
+                      </td>
+                      <td data-label="CertNo" style="font-family: monospace; font-weight: 600;">
+                        <%= h.cert_number ? (h.cert_number.split('/').length>= 6 ?
+                          h.cert_number.split('/').slice(-3).join('/') : h.cert_number.split('/').slice(-2).join('/')) :
+                          'N/A' %>
+                      </td>
+                      <td data-label="CMS ID">
+                        <code
+                          style="font-size: 0.82rem; color: #60a5fa;"><%= (h.employee_id || '').toUpperCase() %></code>
+                      </td>
+                      <td data-label="Name">
+                        <%= h.employee_name %>
+                      </td>
+                      <td data-label="Desig">
+                        <%= h.designation %>
+                      </td>
+                      <td data-label="C Date">
+                        <%= formatIST(h.certified_date) %>
+                      </td>
+                      <td data-label="Status">
+                        <% if (h.status==='APPROVED' ) { %>
+                          <span class="badge badge-approved">Approved</span>
+                          <% } else { %>
+                            <span class="badge badge-rejected">Rejected</span>
+                            <% } %>
+                      </td>
+                      <td data-label="Action Taken On">
+                        <%= formatIST(h.approved_at, true) %>
+                      </td>
+                      <td data-label="Link">
+                        <% if (h.status==='APPROVED' ) { %>
+                          <a href="/certificate/view/<%= h.id %>" target="_blank" class="btn btn-secondary"
+                            style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                            View/Print
+                          </a>
+                          <% } else { %>
+                            <span
+                              style="font-size: 0.8rem; color: var(--text-secondary); font-style: italic;">Unavailable</span>
+                            <% } %>
+                      </td>
+                    </tr>
+                    <% }) %>
+                      <% } %>
+            </tbody>
+          </table>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+
+  <script>
+    // Professional theme-based alerts handler
+    function showAlert(message, type = 'success') {
+      const alertsContainer = document.getElementById('alerts-container');
+      if (!alertsContainer) return;
+
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.style.animation = 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+
+      let iconSvg = '';
+      if (type === 'success') {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399; flex-shrink: 0;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        `;
+      } else {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f87171; flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        `;
+      }
+
+      alertDiv.innerHTML = `
+        ${iconSvg}
+        <span style="flex: 1;">${message}</span>
+        <button type="button" onclick="this.parentElement.remove()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; margin-left: auto; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+
+      alertsContainer.innerHTML = '';
+      alertsContainer.appendChild(alertDiv);
+
+      // Auto-dismiss after 6 seconds
+      setTimeout(() => {
+        if (alertDiv && alertDiv.parentElement) {
+          alertDiv.style.opacity = '0';
+          alertDiv.style.transform = 'translateY(-10px)';
+          alertDiv.style.transition = 'all 0.4s ease-out';
+          setTimeout(() => {
+            if (alertDiv.parentElement) alertDiv.remove();
+          }, 400);
+        }
+      }, 6000);
+    }
+
+    // Handle initial alerts from query parameters
+    const params = new URLSearchParams(window.location.search);
+    const successMsg = params.get('success');
+    const errorMsg = params.get('error');
+    if (successMsg) {
+      showAlert(successMsg, 'success');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (errorMsg) {
+      showAlert(errorMsg, 'danger');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Batch approval handling
+    document.addEventListener('DOMContentLoaded', () => {
+      const selectAllPending = document.getElementById('select-all-pending');
+      const pendingCheckboxes = document.querySelectorAll('.pending-checkbox');
+      const btnBulkApprove = document.getElementById('btn-bulk-approve');
+      const bulkSelectCount = document.getElementById('bulk-select-count');
+
+      if (selectAllPending) {
+        selectAllPending.addEventListener('change', () => {
+          pendingCheckboxes.forEach(cb => {
+            cb.checked = selectAllPending.checked;
+          });
+          updateBulkApproveButton();
+        });
+      }
+
+      pendingCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (!cb.checked && selectAllPending) {
+            selectAllPending.checked = false;
+          }
+          const allChecked = Array.from(pendingCheckboxes).every(c => c.checked);
+          if (allChecked && selectAllPending) {
+            selectAllPending.checked = true;
+          }
+          updateBulkApproveButton();
+        });
+      });
+
+      function updateBulkApproveButton() {
+        const checkedCount = Array.from(pendingCheckboxes).filter(c => c.checked).length;
+        if (checkedCount > 0) {
+          btnBulkApprove.style.display = 'inline-flex';
+          bulkSelectCount.textContent = checkedCount;
+        } else {
+          btnBulkApprove.style.display = 'none';
+          bulkSelectCount.textContent = '0';
+        }
+      }
+
+      if (btnBulkApprove) {
+        btnBulkApprove.addEventListener('click', async () => {
+          const checkedBoxes = Array.from(pendingCheckboxes).filter(c => c.checked);
+          const ids = checkedBoxes.map(c => c.value);
+
+          if (ids.length === 0) return;
+
+          if (!confirm(`Are you sure you want to approve and grant certificates for all ${ids.length} selected employees?`)) {
+            return;
+          }
+
+          btnBulkApprove.disabled = true;
+          btnBulkApprove.textContent = 'Processing...';
+
+          try {
+            const response = await fetch('/aa/certificates/approve-batch', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ ids })
+            });
+
+            const result = await response.json();
+            if (result.success) {
+              window.location.href = `/aa?success=${encodeURIComponent(result.message)}`;
+            } else {
+              showAlert(result.error || 'Failed to approve selected certificates.', 'danger');
+              btnBulkApprove.disabled = false;
+              updateBulkApproveButton();
+            }
+          } catch (err) {
+            console.error('Batch approval error:', err);
+            showAlert('An error occurred during batch approval.', 'danger');
+            btnBulkApprove.disabled = false;
+            updateBulkApproveButton();
+          }
+        });
+      }
+    });
+
+    function toggleAll(source) {
+      const checkboxes = document.querySelectorAll('.cert-checkbox');
+      checkboxes.forEach(cb => {
+        const row = cb.closest('tr');
+        if (row && row.style.display !== 'none') {
+          cb.checked = source.checked;
+        }
+      });
+    }
+
+    function applyFilters() {
+      const nameInput = document.getElementById('filter-name').value.toLowerCase().trim();
+      const dateFromVal = document.getElementById('filter-date-from').value;
+      const statusVal = document.getElementById('filter-status').value;
+
+      const rows = document.querySelectorAll('.cert-row');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const dateStr = row.getAttribute('data-date') || '';
+        const status = row.getAttribute('data-status') || '';
+
+        let matchName = true;
+        let matchDate = true;
+        let matchStatus = true;
+
+        if (nameInput) {
+          matchName = name.includes(nameInput);
+        }
+
+        if (dateFromVal) {
+          matchDate = dateStr >= dateFromVal;
+        }
+
+        if (statusVal) {
+          matchStatus = status === statusVal;
+        }
+
+        if (matchName && matchDate && matchStatus) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Handle custom no-matching-records visual row
+      const noRecordsRow = document.getElementById('no-filtered-records-row');
+      if (rows.length > 0) {
+        if (visibleCount === 0) {
+          if (!noRecordsRow) {
+            const tbody = document.querySelector('table tbody');
+            const tr = document.createElement('tr');
+            tr.id = 'no-filtered-records-row';
+            tr.innerHTML = `
+              <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                No matching certificate records found for the applied filters.
+              </td>
+            `;
+            tbody.appendChild(tr);
+          } else {
+            noRecordsRow.style.display = '';
+          }
+        } else {
+          if (noRecordsRow) {
+            noRecordsRow.style.display = 'none';
+          }
+        }
+      }
+    }
+
+    function resetAllFilters() {
+      document.getElementById('filter-name').value = '';
+      document.getElementById('filter-date-from').value = '';
+      document.getElementById('filter-status').value = '';
+      applyFilters();
+    }
+  </script>
+</body>
+
+</html>

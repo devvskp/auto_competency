@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Portal - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="/images/ir.png" alt="Logo" onerror="this.src='/images/ir.png'">
+      <h1>Railway Competency System</h1>
+    </div>
+    <div class="nav-user">
+      <div class="user-tag">
+        <span class="user-name-text"><%= user.name %></span>
+        <span class="role-badge">Employee / CE</span>
+      </div>
+      <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <h2>Welcome, <%= user.name %></h2>
+      <p>Access your certified competency credentials for automatic signaling systems.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">My Competency Certificates</div>
+      
+      <% if (certificates.length === 0) { %>
+        <div style="text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">📇</div>
+          <h3>No approved competency certificates found.</h3>
+          <p style="margin-top: 0.5rem; font-size: 0.9rem;">Once your training is completed and approved, your certificate will appear here.</p>
+        </div>
+      <% } else { %>
+        <div class="cert-grid">
+          <% certificates.forEach(c => { %>
+            <div class="cert-card">
+              <div class="cert-card-header">
+                <div>
+                  <span class="badge badge-approved" style="margin-bottom: 0.5rem;">Valid</span>
+                  <div class="cert-card-title">Automatic Block Signaling</div>
+                </div>
+                <img src="/images/ir.png" style="height: 32px;" onerror="this.src='/images/ir.png'">
+              </div>
+
+              <div class="cert-card-body">
+                <p><span>Certificate No:</span> <code style="color: var(--text-primary); font-weight: bold;"><%= c.cert_number %></code></p>
+                <p><span>Certified Date:</span> <%= new Date(c.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') %></p>
+                <p><span>Validity Upto:</span> <span style="color: #a5b4fc;"><%= new Date(c.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') %></span></p>
+                <p style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+                  Approved by: <%= c.approved_by_name %><br>
+                  (<%= c.approved_by_designation %>)
+                </p>
+              </div>
+
+              <a href="/certificate/view/<%= c.id %>" target="_blank" class="btn btn-primary" style="width: 100%; text-align: center;">
+                View & Print B5 Certificate
+              </a>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+</body>
+</html>
+

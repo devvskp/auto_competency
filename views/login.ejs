@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Auto Competency Certificate System</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="/images/ir.png" alt="Indian Railways Logo" onerror="this.src='/images/ir.png'">
+        <h2>Railway Competency</h2>
+        <p>Auto Competency Certificate Portal</p>
+      </div>
+
+      <% if (error) { %>
+        <div class="alert alert-danger" id="login-error-msg">
+          <span><%= error %></span>
+        </div>
+      <% } %>
+
+      <form action="/login" method="POST">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="Enter username" required autocomplete="username">
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required autocomplete="current-password">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.75rem;">
+          Sign In
+        </button>
+      </form>
+
+      <div class="info-box">
+        <strong>Seeded Test Accounts:</strong><br>
+        • Admin: <code>admin</code> / <code>interOP@123</code><br>
+        • Trainer (FA): <code>tmc</code> / <code>fa@tmc</code><br>
+        • Approver (AA): <code>cti</code> / <code>aa@cti</code><br>
+        • Certified Emp (CE): <code>mipm7602</code> / <code>mipm7602</code>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+</body>
+</html>
+

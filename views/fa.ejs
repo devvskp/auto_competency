@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trainer Portal - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body>
+  <header>
+    <div class="brand">
+      <img src="/images/ir.png" alt="Logo" onerror="this.src='/images/ir.png'">
+      <h1>Railway Competency System</h1>
+    </div>
+    <div class="nav-user">
+      <div class="user-tag">
+        <span class="user-name-text">
+          <%= user.name %>
+        </span>
+        <span class="role-badge">Trainer / FA</span>
+      </div>
+      <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading"
+      style="display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; flex-wrap: wrap;">
+      <div style="flex: 1; min-width: 250px;">
+        <h2 style="margin: 0 0 0.25rem 0;">Trainer / Forwarding Authority Portal</h2>
+        <p style="margin: 0; color: var(--text-secondary); font-size: 0.95rem;">Submit competency certifications for
+          automatic block signaling territory and monitor approval status.</p>
+      </div>
+      <div style="flex-shrink: 0;">
+        <div class="goal-badge">
+          <span class="goal-number">
+            <%= certificates.filter(c=> c.status === 'APPROVED').length %>
+          </span>
+          <span class="goal-label">Certified</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alert Notifications -->
+    <div id="alerts-container"></div>
+
+    <div class="admin-grid">
+      <!-- Recommedation Form Column -->
+      <div class="card" style="height: fit-content;">
+        <div class="card-title">Recommend Employee Certification</div>
+        <form action="/fa/certificates/create" method="POST">
+          <!-- Employee Quick Search (optional — fills fields below) -->
+          <div class="form-group" style="position: relative;">
+            <label for="emp-search" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                style="color: #60a5fa;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Quick Search from Employee List
+              <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(optional — or fill
+                manually below)</span>
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="emp-search" class="form-control" autocomplete="off"
+                placeholder="Type ID or Name to search and auto-fill..."
+                style="padding-left: 1rem; border-style: dashed;" oninput="filterEmployees(this.value)"
+                onfocus="filterEmployees(this.value)" onblur="setTimeout(closeDropdown, 200)">
+              <button type="button" id="emp-clear-btn" onclick="clearSelection()"
+                style="display:none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+                  background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.2rem;" title="Clear search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <!-- Autocomplete dropdown -->
+            <div id="emp-dropdown" style="display:none; position: absolute; top: 100%; left: 0; right: 0; z-index: 999;
+              background: rgba(17,24,39,0.98); border: 1px solid var(--border-color); border-top: none;
+              border-radius: 0 0 10px 10px; max-height: 220px; overflow-y: auto;
+              box-shadow: 0 12px 32px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
+            </div>
+          </div>
+
+          <!-- Divider -->
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin: 0.5rem 0 1rem;">
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            <span
+              style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Employee
+              Details</span>
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          </div>
+
+          <!-- Editable Employee Fields (populated by search or filled manually) -->
+          <div class="form-group">
+            <label for="employee_id">Employee ID
+              <span id="autofill-badge" style="display:none; font-size: 0.68rem; background: rgba(16,185,129,0.15);
+                color: #34d399; border: 1px solid rgba(16,185,129,0.3); padding: 0.1rem 0.4rem;
+                border-radius: 4px; font-weight: 600; margin-left: 0.4rem;">Auto-filled · Editable</span>
+            </label>
+            <input type="text" id="employee_id" name="employee_id" class="form-control" placeholder="e.g. MIPM7320"
+              required oninput="onFieldEdited()">
+          </div>
+
+          <div class="form-group">
+            <label for="employee_name">Employee Name</label>
+            <input type="text" id="employee_name" name="employee_name" class="form-control"
+              placeholder="Enter full name" required oninput="onFieldEdited()">
+          </div>
+
+          <div class="form-group">
+            <label for="designation">Designation</label>
+            <input type="text" id="designation" name="designation" class="form-control"
+              placeholder="e.g. SGD, GD, Sr TMR (G)/MIPM" required oninput="onFieldEdited()">
+          </div>
+
+          <div class="form-group">
+            <label for="certified_date">Certified Date</label>
+            <input type="date" id="certified_date" name="certified_date" class="form-control" required
+              onchange="updateValidityDate()">
+          </div>
+
+          <div class="form-group">
+            <label for="valid_upto_display">Validity Expiry Date (6 Months)</label>
+            <input type="text" id="valid_upto_display" class="form-control"
+              style="background: rgba(255,255,255,0.02); color: #a5b4fc; font-weight: 600;" readonly
+              placeholder="Choose Certified Date first">
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+            Forward to Approving Authority
+          </button>
+        </form>
+      </div>
+
+      <!-- History Column -->
+      <div class="card">
+        <div class="card-title">
+          <span>Forwarded Certificate History</span>
+          <button type="submit" form="print-batch-form" class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Selected
+          </button>
+        </div>
+        <!-- Search & Filter Controls -->
+        <div class="filters-bar"
+          style="display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; background: rgba(255,255,255,0.02); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color); align-items: flex-end;">
+          <div style="flex: 1.5; min-width: 200px;">
+            <label for="filter-name"
+              style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Filter
+              by Employee Name</label>
+            <input type="text" id="filter-name" class="form-control" placeholder="Type name to search..."
+              oninput="applyFilters()" style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+          </div>
+          <div style="flex: 1.2; min-width: 200px;">
+            <label for="filter-date-from"
+              style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Certified
+              Date (From)</label>
+            <input type="date" id="filter-date-from" class="form-control" onchange="applyFilters()"
+              style="padding: 0.5rem 0.75rem; font-size: 0.9rem; min-height: 38px;">
+          </div>
+          <div style="flex: 1; min-width: 150px;">
+            <label for="filter-status"
+              style="display: block; font-size: 0.8rem; font-weight: 500; margin-bottom: 0.4rem; color: var(--text-secondary);">Filter
+              by Status</label>
+            <select id="filter-status" class="form-control" onchange="applyFilters()"
+              style="padding: 0.5rem 0.75rem; font-size: 0.9rem;">
+              <option value="">All Statuses</option>
+              <option value="PENDING">Pending Approval</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+          <div style="min-width: 120px;">
+            <button type="button" class="btn btn-secondary" onclick="resetAllFilters()"
+              style="padding: 0.5rem 1rem; font-size: 0.9rem; width: 100%; height: 41px;">Reset Filters</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="selectAll" onclick="toggleAll(this)"></th>
+                  <th>Cert No</th>
+                  <th>CMS ID</th>
+                  <th>Name</th>
+                  <th>Desig</th>
+                  <th>C Date</th>
+                  <th>Status</th>
+                  <th>Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (certificates.length===0) { %>
+                  <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                      No forwarded certificate records found.
+                    </td>
+                  </tr>
+                  <% } else { %>
+                    <% certificates.forEach(c=> {
+                      const cDate = new Date(c.certified_date);
+                      const dataDateStr = `${cDate.getFullYear()}-${String(cDate.getMonth() + 1).padStart(2,
+                      '0')}-${String(cDate.getDate()).padStart(2, '0')}`;
+                      %>
+                      <tr class="cert-row" data-name="<%= c.employee_name.toLowerCase() %>"
+                        data-date="<%= dataDateStr %>" data-status="<%= c.status %>">
+                        <td data-label="Select">
+                          <% if (c.status==='APPROVED' ) { %>
+                            <input type="checkbox" name="ids" value="<%= c.id %>" class="cert-checkbox">
+                            <% } else { %>
+                              <input type="checkbox" disabled>
+                              <% } %>
+                        </td>
+                        <td data-label="CertNo" style="font-family: monospace; font-size: 0.9rem;">
+                          <%= c.cert_number ? (c.cert_number.split('/').length>= 6 ?
+                            c.cert_number.split('/').slice(-3).join('/') : c.cert_number.split('/').slice(-2).join('/'))
+                            : 'PENDING...' %>
+                        </td>
+                        <td data-label="CMS ID">
+                          <code
+                            style="font-size: 0.82rem; color: #60a5fa;"><%= (c.employee_id || '').toUpperCase() %></code>
+                        </td>
+                        <td data-label="Name" style="font-weight: 600;">
+                          <%= c.employee_name %>
+                        </td>
+                        <td data-label="Desig">
+                          <%= c.designation %>
+                        </td>
+                        <td data-label="C Date">
+                          <%= formatIST(c.certified_date) %>
+                        </td>
+                        <td data-label="Status">
+                          <% if (c.status==='PENDING' ) { %>
+                            <span class="badge badge-pending">Pending Approval</span>
+                            <% } else if (c.status==='APPROVED' ) { %>
+                              <span class="badge badge-approved">Approved</span>
+                              <% } else { %>
+                                <span class="badge badge-rejected">Rejected</span>
+                                <% } %>
+                        </td>
+                        <td data-label="Link">
+                          <% if (c.status==='APPROVED' ) { %>
+                            <a href="/certificate/view/<%= c.id %>" target="_blank" class="btn btn-secondary"
+                              style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">
+                              View/Print
+                            </a>
+                            <% } else { %>
+                              <span
+                                style="font-size: 0.8rem; color: var(--text-secondary); font-style: italic;">Unavailable</span>
+                              <% } %>
+                        </td>
+                      </tr>
+                      <% }) %>
+                        <% } %>
+              </tbody>
+            </table>
+          </form>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+
+  <script>
+    // Professional theme-based alerts handler
+    function showAlert(message, type = 'success') {
+      const alertsContainer = document.getElementById('alerts-container');
+      if (!alertsContainer) return;
+
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.style.animation = 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+
+      let iconSvg = '';
+      if (type === 'success') {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399; flex-shrink: 0;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        `;
+      } else {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f87171; flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        `;
+      }
+
+      alertDiv.innerHTML = `
+        ${iconSvg}
+        <span style="flex: 1;">${message}</span>
+        <button type="button" onclick="this.parentElement.remove()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; margin-left: auto; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+
+      alertsContainer.innerHTML = '';
+      alertsContainer.appendChild(alertDiv);
+
+      // Auto-dismiss after 6 seconds
+      setTimeout(() => {
+        if (alertDiv && alertDiv.parentElement) {
+          alertDiv.style.opacity = '0';
+          alertDiv.style.transform = 'translateY(-10px)';
+          alertDiv.style.transition = 'all 0.4s ease-out';
+          setTimeout(() => {
+            if (alertDiv.parentElement) alertDiv.remove();
+          }, 400);
+        }
+      }, 6000);
+    }
+
+    // Handle Alerts
+    const params = new URLSearchParams(window.location.search);
+    const successMsg = params.get('success');
+    const errorMsg = params.get('error');
+    if (successMsg) {
+      showAlert(successMsg, 'success');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (errorMsg) {
+      showAlert(errorMsg, 'danger');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function toggleAll(source) {
+      const checkboxes = document.querySelectorAll('.cert-checkbox');
+      checkboxes.forEach(cb => {
+        const row = cb.closest('tr');
+        if (row && row.style.display !== 'none') {
+          cb.checked = source.checked;
+        }
+      });
+    }
+
+    function applyFilters() {
+      const nameInput = document.getElementById('filter-name').value.toLowerCase().trim();
+      const dateFromVal = document.getElementById('filter-date-from').value;
+      const statusVal = document.getElementById('filter-status').value;
+
+      const rows = document.querySelectorAll('.cert-row');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-name') || '';
+        const dateStr = row.getAttribute('data-date') || '';
+        const status = row.getAttribute('data-status') || '';
+
+        let matchName = true;
+        let matchDate = true;
+        let matchStatus = true;
+
+        if (nameInput) {
+          matchName = name.includes(nameInput);
+        }
+
+        if (dateFromVal) {
+          // Chronological string comparison for YYYY-MM-DD
+          matchDate = dateStr >= dateFromVal;
+        }
+
+        if (statusVal) {
+          matchStatus = status === statusVal;
+        }
+
+        if (matchName && matchDate && matchStatus) {
+          row.style.display = '';
+          visibleCount++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      // Handle custom no-matching-records visual row
+      const noRecordsRow = document.getElementById('no-filtered-records-row');
+      if (rows.length > 0) {
+        if (visibleCount === 0) {
+          if (!noRecordsRow) {
+            const tbody = document.querySelector('table tbody');
+            const tr = document.createElement('tr');
+            tr.id = 'no-filtered-records-row';
+            tr.innerHTML = `
+              <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                No matching certificate records found for the applied filters.
+              </td>
+            `;
+            tbody.appendChild(tr);
+          } else {
+            noRecordsRow.style.display = '';
+          }
+        } else {
+          if (noRecordsRow) {
+            noRecordsRow.style.display = 'none';
+          }
+        }
+      }
+    }
+
+    function resetAllFilters() {
+      document.getElementById('filter-name').value = '';
+      document.getElementById('filter-date-from').value = '';
+      document.getElementById('filter-status').value = '';
+      applyFilters();
+    }
+
+    // Set today as default date
+    const dateInput = document.getElementById('certified_date');
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    let mm = today.getMonth() + 1;
+    let dd = today.getDate();
+    if (mm < 10) mm = '0' + mm;
+    if (dd < 10) dd = '0' + dd;
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+
+    // Calculate initial validity date
+    updateValidityDate();
+
+    function updateValidityDate() {
+      const certDateVal = dateInput.value;
+      if (!certDateVal) return;
+
+      const certDate = new Date(certDateVal);
+      const validDate = new Date(certDate);
+      validDate.setMonth(validDate.getMonth() + 6);
+      validDate.setDate(validDate.getDate() - 1); // 6 months minus 1 day
+
+      const dd_v = String(validDate.getDate()).padStart(2, '0');
+      const mm_v = String(validDate.getMonth() + 1).padStart(2, '0');
+      const yyyy_v = validDate.getFullYear();
+
+      document.getElementById('valid_upto_display').value = `${dd_v}-${mm_v}-${yyyy_v}`;
+    }
+
+    // ========================================================
+    // EMPLOYEE AUTOCOMPLETE FROM CSV
+    // ========================================================
+    let empData = [];
+    let selectedEmployee = null;
+
+    // Fetch and parse the CSV on page load
+    fetch('/data/emp_data.csv')
+      .then(res => res.text())
+      .then(csvText => {
+        const lines = csvText.split('\n');
+        // Skip header (line 0)
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          // Split by comma — but handle potential commas in names
+          const parts = line.split(',');
+          if (parts.length < 5) continue;
+          const emp = {
+            s_no: parts[0].trim(),
+            employee_id: parts[1].trim().toUpperCase(),
+            employee_name: parts[2].trim(),
+            gender: parts[3].trim(),
+            designation: parts[4].trim()
+          };
+          if (emp.employee_id && emp.employee_name) {
+            empData.push(emp);
+          }
+        }
+        console.log(`Loaded ${empData.length} employees from CSV.`);
+      })
+      .catch(err => console.warn('Could not load employee data:', err));
+
+    function filterEmployees(query) {
+      const dropdown = document.getElementById('emp-dropdown');
+      query = query.trim().toUpperCase();
+
+      if (!query || empData.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Match by ID prefix or name contains query
+      const matches = empData.filter(e =>
+        e.employee_id.startsWith(query) ||
+        e.employee_name.toUpperCase().includes(query)
+      ).slice(0, 15); // Show max 15 results
+
+      if (matches.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      dropdown.innerHTML = matches.map((e, idx) => `
+        <div class="emp-option" onclick="selectEmployee(${empData.indexOf(e)})"
+          style="padding: 0.65rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
+          onmouseover="this.style.background='rgba(59,130,246,0.12)'"
+          onmouseout="this.style.background='transparent'">
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">${e.employee_name}</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); font-family: monospace; margin-top: 1px;">${e.employee_id}</div>
+          </div>
+          <span style="font-size: 0.75rem; color: #a5b4fc; background: rgba(99,102,241,0.15);
+            padding: 0.15rem 0.5rem; border-radius: 4px; flex-shrink: 0; margin-left: 0.5rem;">${e.designation}</span>
+        </div>
+      `).join('');
+
+      dropdown.style.display = 'block';
+    }
+
+    function selectEmployee(idx) {
+      const emp = empData[idx];
+      if (!emp) return;
+      selectedEmployee = emp;
+
+      // Populate the visible, editable input fields
+      document.getElementById('employee_id').value = emp.employee_id;
+      document.getElementById('employee_name').value = emp.employee_name;
+      document.getElementById('designation').value = emp.designation;
+
+      // Show the auto-fill badge and clear button
+      document.getElementById('autofill-badge').style.display = 'inline';
+      document.getElementById('emp-search').value = emp.employee_id + ' — ' + emp.employee_name;
+      document.getElementById('emp-clear-btn').style.display = 'flex';
+      document.getElementById('emp-dropdown').style.display = 'none';
+    }
+
+    function clearSelection() {
+      selectedEmployee = null;
+      // Clear editable fields
+      document.getElementById('employee_id').value = '';
+      document.getElementById('employee_name').value = '';
+      document.getElementById('designation').value = '';
+      // Reset search bar
+      document.getElementById('emp-search').value = '';
+      document.getElementById('emp-clear-btn').style.display = 'none';
+      document.getElementById('autofill-badge').style.display = 'none';
+      document.getElementById('emp-search').focus();
+    }
+
+    // When user edits auto-filled fields, hide auto-fill badge (they're now in manual mode)
+    function onFieldEdited() {
+      selectedEmployee = null;
+      document.getElementById('autofill-badge').style.display = 'none';
+    }
+
+    function closeDropdown() {
+      const dropdown = document.getElementById('emp-dropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+  </script>
+</body>
+
+</html>

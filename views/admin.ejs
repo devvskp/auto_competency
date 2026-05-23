@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img src="/images/ir.png" alt="Logo" onerror="this.src='/images/ir.png'">
+      <h1>Railway Competency System</h1>
+    </div>
+    <div class="nav-user">
+      <div class="user-tag">
+      <span class="user-name-text"><%= user.name %></span>
+        <span class="role-badge"><%= user.user_type %></span>
+      </div>
+      <a href="/logout" class="btn-logout">Logout</a>
+    </div>
+  </header>
+
+  <main>
+    <div class="page-heading">
+      <h2>System Administrator Panel</h2>
+      <p>Manage employee registers, trainers, and approval authority accounts.</p>
+    </div>
+
+    <!-- Alert Notifications -->
+    <div id="alerts-container"></div>
+
+    <div class="admin-grid">
+      <!-- Forms Column -->
+      <div>
+        <!-- Create User Card -->
+        <div class="card" id="create-card">
+          <div class="card-title">Register New User</div>
+          <form action="/admin/users/create" method="POST">
+            <div class="form-group">
+              <label for="name">Full Name</label>
+              <input type="text" id="name" name="name" class="form-control" placeholder="e.g. Kommara Suresh" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="designation">Designation</label>
+              <input type="text" id="designation" name="designation" class="form-control" placeholder="e.g. Sr TMR (G)/MIPM" required>
+            </div>
+
+            <div class="form-group">
+              <label for="user_type">User Role</label>
+              <select id="user_type" name="user_type" class="form-control" required>
+                <option value="CE">Certified Employee (CE)</option>
+                <option value="FA">Forwarding Authority / Trainer (FA)</option>
+                <option value="AA">Approving Authority (AA)</option>
+                <option value="admin">System Administrator</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="username">Username / Employee ID</label>
+              <input type="text" id="username" name="username" class="form-control" placeholder="e.g. mipm7602" required>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="text" id="password" name="password" class="form-control" placeholder="Set password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+              Create User Account
+            </button>
+          </form>
+        </div>
+
+        <!-- Edit User Card (Hidden by default) -->
+        <div class="card" id="edit-card" style="display: none; border-color: var(--accent-color);">
+          <div class="card-title">
+            <span>Modify User Account</span>
+            <button onclick="cancelEdit()" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Cancel</button>
+          </div>
+          <form action="/admin/users/update" method="POST">
+            <input type="hidden" id="edit-id" name="id">
+            
+            <div class="form-group">
+              <label for="edit-name">Full Name</label>
+              <input type="text" id="edit-name" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-designation">Designation</label>
+              <input type="text" id="edit-designation" name="designation" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-user_type">User Role</label>
+              <select id="edit-user_type" name="user_type" class="form-control" required>
+                <option value="CE">Certified Employee (CE)</option>
+                <option value="FA">Forwarding Authority / Trainer (FA)</option>
+                <option value="AA">Approving Authority (AA)</option>
+                <option value="admin">System Administrator</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-username">Username / Employee ID</label>
+              <input type="text" id="edit-username" name="username" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-password">Password</label>
+              <input type="text" id="edit-password" name="password" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 0.5rem;">
+              Save Modifications
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Users List Column -->
+      <div class="card">
+        <div class="card-title">Registered Accounts Register</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Designation</th>
+                <th>Role</th>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% users.forEach(u => { %>
+                <tr id="user-row-<%= u.id %>">
+                  <td data-label="Name" style="font-weight: 600;"><%= u.name %></td>
+                  <td data-label="Designation"><%= u.designation %></td>
+                  <td data-label="Role">
+                    <span class="badge" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255,255,255,0.15);">
+                      <%= u.user_type %>
+                    </span>
+                  </td>
+                  <td data-label="Username" style="font-family: monospace;"><%= u.username %></td>
+                  <td data-label="Password"><code><%= u.password %></code></td>
+                  <td data-label="Actions">
+                      <div class="table-actions">
+                      <button onclick="startEdit(<%= JSON.stringify(u) %>)" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                        Edit
+                      </button>
+                      
+                      <!-- Prevent admin self deletion -->
+                      <% if (u.username !== user.username) { %>
+                        <form action="/admin/users/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');" style="margin: 0;">
+                          <input type="hidden" name="id" value="<%= u.id %>">
+                          <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color);">
+                            Delete
+                          </button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+
+  <script>
+    // Professional theme-based alerts handler
+    function showAlert(message, type = 'success') {
+      const alertsContainer = document.getElementById('alerts-container');
+      if (!alertsContainer) return;
+      
+      const alertDiv = document.createElement('div');
+      alertDiv.className = `alert alert-${type}`;
+      alertDiv.style.animation = 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+      
+      let iconSvg = '';
+      if (type === 'success') {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #34d399; flex-shrink: 0;">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+          </svg>
+        `;
+      } else {
+        iconSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: #f87171; flex-shrink: 0;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        `;
+      }
+      
+      alertDiv.innerHTML = `
+        ${iconSvg}
+        <span style="flex: 1;">${message}</span>
+        <button type="button" onclick="this.parentElement.remove()" style="background: transparent; border: none; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.25rem; margin-left: auto; transition: color 0.2s;" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      `;
+      
+      alertsContainer.innerHTML = '';
+      alertsContainer.appendChild(alertDiv);
+      
+      // Auto-dismiss after 6 seconds
+      setTimeout(() => {
+        if (alertDiv && alertDiv.parentElement) {
+          alertDiv.style.opacity = '0';
+          alertDiv.style.transform = 'translateY(-10px)';
+          alertDiv.style.transition = 'all 0.4s ease-out';
+          setTimeout(() => {
+            if (alertDiv.parentElement) alertDiv.remove();
+          }, 400);
+        }
+      }, 6000);
+    }
+
+    // Extract query parameters for alerts
+    const params = new URLSearchParams(window.location.search);
+    const successMsg = params.get('success');
+    const errorMsg = params.get('error');
+    
+    if (successMsg) {
+      showAlert(successMsg, 'success');
+      // Clean URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+    if (errorMsg) {
+      showAlert(errorMsg, 'danger');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    function startEdit(user) {
+      // Hide create form and display edit form
+      document.getElementById('create-card').style.display = 'none';
+      const editCard = document.getElementById('edit-card');
+      editCard.style.display = 'block';
+
+      // Populate edit fields
+      document.getElementById('edit-id').value = user.id;
+      document.getElementById('edit-name').value = user.name;
+      document.getElementById('edit-designation').value = user.designation;
+      document.getElementById('edit-user_type').value = user.user_type;
+      document.getElementById('edit-username').value = user.username;
+      document.getElementById('edit-password').value = user.password;
+
+      // Scroll to forms column
+      editCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+      document.getElementById('edit-card').style.display = 'none';
+      document.getElementById('create-card').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
+

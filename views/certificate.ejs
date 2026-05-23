@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Certificate - <%= certificate.cert_number %></title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    /* Prevent default web background in print */
+    @media print {
+      body {
+        background: none !important;
+      }
+    }
+  </style>
+</head>
+<body style="background-color: #f1f5f9; padding: 0; margin: 0;">
+  
+  <div class="cert-page-container">
+    <!-- Action buttons (Hidden during printing) -->
+    <div class="cert-actions">
+      <button onclick="window.close()" class="btn btn-secondary">✕ Close Window</button>
+      <button onclick="window.print()" class="btn btn-primary">🖨️ Print / Save as PDF</button>
+    </div>
+
+    <!-- Certificate Block B5 landscape size -->
+    <div class="certificate-b5">
+      <div class="cert-border-outer">
+        <div class="cert-border-inner">
+          
+          <!-- Watermark (ir.png) -->
+          <div class="cert-watermark"></div>
+
+          <!-- Content Wrapper -->
+          <div class="cert-content">
+            
+            <!-- Header Section -->
+            <div class="cert-header" style="position: relative; width: 100%; margin-bottom: 2mm; height: 18mm;">
+              <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);">
+                <img src="/images/East Coast Railway.png" class="cert-logo" alt="East Coast Railway Logo" style="height: 18mm; margin: 0;">
+              </div>
+              <div style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div class="cert-title-railway" style="font-size: 16pt; margin-bottom: 2px;">EAST COAST RAILWAY</div>
+                <div class="cert-title-railway" style="font-size: 12pt;">WALTAIR DIVISION</div>
+              </div>
+              <div style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">
+                <img src="/images/ir.png" class="cert-logo" alt="IR Emblem" style="height: 16.2mm; margin: 0;">
+              </div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 2mm;">
+              <div class="cert-title-competency-container" style="margin: 0;">
+                <div class="cert-title-competency">
+                  Competency Certificate for Working in Automatic Signalling Territory
+                </div>
+              </div>
+            </div>
+
+            <!-- Number and Date Meta line -->
+            <div class="cert-meta-line">
+              <div class="cert-no">
+                No. <span style="font-weight: 700; color: #800000;"><%= certificate.cert_number %></span>
+              </div>
+              <div class="cert-date">
+                Date: <span style="font-weight: 700;"><%= new Date(certificate.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') %></span>
+              </div>
+            </div>
+
+            <!-- Body Details -->
+            <% 
+              // Intelligent parsing of designation and base
+              // Designation: Sr TMR (G)/MIPM -> Desig: Sr TMR (G), Base: MIPM
+              const rawDesig = certificate.designation || '';
+              const slashIdx = rawDesig.lastIndexOf('/');
+              let desigVal = rawDesig;
+              let baseVal = 'WAT'; // Fallback
+              
+              if (slashIdx !== -1) {
+                desigVal = rawDesig.substring(0, slashIdx).trim();
+                baseVal = rawDesig.substring(slashIdx + 1).trim();
+              } else {
+                // Extract letters from start of ID as base (e.g., mipm7602 -> MIPM)
+                const match = (certificate.employee_id || '').match(/^[A-Za-z]+/);
+                if (match) {
+                  baseVal = match[0];
+                }
+              }
+              
+              baseVal = baseVal.toUpperCase();
+            %>
+            <div class="cert-body">
+              <div class="cert-body-declaration" style="line-height: 2; margin-bottom: 3mm; text-align: justify;">
+                Certified that Sri/Smt./Kum. 
+                <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_name || '').toUpperCase() %></span>,
+                Designation <span class="cert-field-underline" style="padding: 0 4px;"><%= (desigVal || '').toUpperCase() %></span>, 
+                CMS ID: <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_id || '').toUpperCase() %></span> 
+                has been provided Training/Counselling on Automatic Signalling Territory. He is well conversant in working in Automatic Signalling System.
+              </div>
+
+              <div class="cert-validity">
+                This certificate is valid for a period of 06 months.
+                <span style="font-size: 10.5pt; font-weight: normal; color: #475569; margin-left: 2mm;">
+                  (Valid upto: <strong style="color: #1e293b;"><%= new Date(certificate.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') %></strong>)
+                </span>
+              </div>
+            </div>
+
+            <!-- Footer / Digitally Signed Mark & AA Details on the Right -->
+            <div class="cert-footer">
+              <div class="cert-signature-box">
+                <div class="digitally-signed-mark">Digitally Signed By</div>
+                <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
+                  <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature" style="display: block; margin-bottom: 0;">
+                  <% if (certificate.approved_at) { 
+                    const appParts = new Intl.DateTimeFormat('en-IN', {
+                      timeZone: 'Asia/Kolkata',
+                      year: 'numeric', month: '2-digit', day: '2-digit',
+                      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                    }).formatToParts(new Date(certificate.approved_at));
+                    const appMap = new Map(appParts.map(p => [p.type, p.value]));
+                    const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')} ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
+                  %>
+                    <div class="cert-approved-on" style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
+                      <%= formattedAppDate %>
+                    </div>
+                  <% } %>
+                </div>
+                
+                <div class="cert-sig-name"><%= certificate.aa_name %></div>
+                <div class="cert-sig-designation"><%= certificate.aa_designation %></div>
+                <div class="cert-sig-org">East Coast Railway</div>
+              </div>
+            </div>
+
+          </div><!-- /cert-content -->
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
+
