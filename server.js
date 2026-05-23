@@ -115,7 +115,7 @@ app.post('/login', async (req, res) => {
     res.redirect('/');
   } catch (err) {
     console.error('Login error:', err);
-    res.render('login', { error: 'An error occurred during login. Please try again.' });
+    res.render('login', { error: `An error occurred during login: ${err.message}. Please try again.` });
   }
 });
 
