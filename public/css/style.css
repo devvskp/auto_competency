@@ -307,6 +307,7 @@ th {
   border-bottom: 1px solid var(--border-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 td {
@@ -315,6 +316,7 @@ td {
   font-size: 0.88rem;
   color: var(--text-primary);
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 tr:last-child td {
