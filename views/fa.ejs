@@ -67,13 +67,15 @@
             <div style="position: relative;">
               <input type="text" id="emp-search" class="form-control" autocomplete="off"
                 placeholder="Type ID or Name to search and auto-fill..."
-                style="padding-left: 1rem; border-style: dashed;" oninput="filterEmployees(this.value)"
-                onfocus="filterEmployees(this.value)" onblur="setTimeout(closeDropdown, 200)">
+                style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;" oninput="filterEmployees(this.value)"
+                onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
               <button type="button" id="emp-clear-btn" onclick="clearSelection()"
-                style="display:none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
-                  background: transparent; border: none; color: var(--text-secondary); cursor: pointer; padding: 0.2rem;" title="Clear search">
-                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+                  background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+                  color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px;
+                  align-items: center; justify-content: center; transition: all 0.2s ease; padding: 0;" title="Clear selection">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
@@ -508,7 +510,7 @@
       }
 
       dropdown.innerHTML = matches.map((e, idx) => `
-        <div class="emp-option" onclick="selectEmployee(${empData.indexOf(e)})"
+        <div class="emp-option" onmousedown="selectEmployee(${empData.indexOf(e)})"
           style="padding: 0.65rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color);
             display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
           onmouseover="this.style.background='rgba(59,130,246,0.12)'"
@@ -560,6 +562,11 @@
       selectedEmployee = null;
       document.getElementById('autofill-badge').style.display = 'none';
     }
+
+    // Prevent dropdown from closing when clicking inside it (prevents blur race conditions)
+    document.getElementById('emp-dropdown').addEventListener('mousedown', function(e) {
+      e.preventDefault();
+    });
 
     function closeDropdown() {
       const dropdown = document.getElementById('emp-dropdown');
