@@ -93,26 +93,52 @@ app.get('/login', (req, res) => {
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
-    if (result.rows.length === 0) {
-      return res.render('login', { error: 'Invalid username or password.' });
-    }
-    
-    const user = result.rows[0];
-    if (user.password !== password) {
-      return res.render('login', { error: 'Invalid username or password.' });
+    // 1. Check users table (for Admin, FA, AA)
+    const userResult = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length > 0) {
+      const user = userResult.rows[0];
+      if (user.password !== password) {
+        return res.render('login', { error: 'Invalid username or password.' });
+      }
+
+      // Save session
+      req.session.user = {
+        id: user.id,
+        name: user.name,
+        designation: user.designation,
+        user_type: user.user_type,
+        username: user.username
+      };
+      return res.redirect('/');
     }
 
-    // Save session
-    req.session.user = {
-      id: user.id,
-      name: user.name,
-      designation: user.designation,
-      user_type: user.user_type,
-      username: user.username
-    };
+    // 2. Check employees table (fallback for CE employees)
+    if (username) {
+      const formattedUsername = username.trim().toUpperCase();
+      const empResult = await pool.query('SELECT * FROM employees WHERE employee_id = $1', [formattedUsername]);
+      if (empResult.rows.length > 0) {
+        const employee = empResult.rows[0];
+        if (employee.status === 'PENDING') {
+          return res.render('login', { error: 'You are under approval by admin, please contact him' });
+        }
+        if (employee.password !== password) {
+          return res.render('login', { error: 'Invalid username or password.' });
+        }
 
-    res.redirect('/');
+        // Save session
+        req.session.user = {
+          id: employee.id,
+          name: employee.name,
+          designation: employee.designation,
+          user_type: 'CE',
+          username: employee.employee_id
+        };
+        return res.redirect('/');
+      }
+    }
+
+    // 3. Neither found
+    return res.render('login', { error: 'Invalid username or password.' });
   } catch (err) {
     console.error('Login error:', err);
     res.render('login', { error: `An error occurred during login: ${err.message}. Please try again.` });
@@ -126,12 +152,78 @@ app.get('/logout', (req, res) => {
 });
 
 
+// --- PUBLIC REGISTRATION ROUTES ---
+
+app.get('/register', (req, res) => {
+  if (req.session.user) {
+    return res.redirect('/');
+  }
+  res.render('register', { error: null, success: null });
+});
+
+app.post('/register', async (req, res) => {
+  const { employee_id, employee_name, designation, password, confirm_password } = req.body;
+
+  if (password !== confirm_password) {
+    return res.render('register', { error: 'Passwords do not match.', success: null });
+  }
+
+  try {
+    if (employee_id) {
+      const formattedEmpId = employee_id.trim().toUpperCase();
+      const checkEmp = await pool.query('SELECT * FROM employees WHERE employee_id = $1', [formattedEmpId]);
+      if (checkEmp.rows.length > 0) {
+        const emp = checkEmp.rows[0];
+        if (emp.status === 'PENDING') {
+          return res.render('register', { error: 'You are under approval by admin, please contact him', success: null });
+        } else {
+          return res.render('register', { error: 'This Crew ID is already registered and approved. Please log in.', success: null });
+        }
+      }
+
+      // Check if username is already taken in users table (just to be safe)
+      const checkUser = await pool.query('SELECT * FROM users WHERE username = $1', [formattedEmpId]);
+      if (checkUser.rows.length > 0) {
+        return res.render('register', { error: 'This ID is already registered as a system user.', success: null });
+      }
+
+      // Insert as PENDING
+      await pool.query(
+        `INSERT INTO employees (employee_id, name, designation, password, status) 
+         VALUES ($1, $2, $3, $4, 'PENDING')`,
+        [formattedEmpId, employee_name.trim(), designation.trim(), password]
+      );
+
+      return res.render('register', { 
+        error: null, 
+        success: 'Registration successful! You will be able to login once approved by admin.' 
+      });
+    } else {
+      return res.render('register', { error: 'Employee ID is required.', success: null });
+    }
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.render('register', { error: `Registration failed: ${err.message}`, success: null });
+  }
+});
+
+
 // --- ADMIN ROUTES (User Management) ---
 
 app.get('/admin', requireLogin, requireRole('admin'), async (req, res) => {
   try {
     const usersResult = await pool.query('SELECT * FROM users ORDER BY user_type, name');
-    res.render('admin', { users: usersResult.rows, error: null, success: null });
+    const employeesResult = await pool.query('SELECT * FROM employees ORDER BY status DESC, name');
+    
+    const success = req.query.success || null;
+    const error = req.query.error || null;
+    
+    res.render('admin', { 
+      users: usersResult.rows, 
+      employees: employeesResult.rows,
+      error, 
+      success 
+    });
   } catch (err) {
     console.error('Admin dashboard error:', err);
     res.status(500).send('Database error.');
@@ -178,6 +270,76 @@ app.post('/admin/users/delete', requireLogin, requireRole('admin'), async (req, 
 });
 
 
+// --- ADMIN EMPLOYEE MANAGEMENT ROUTES ---
+
+app.post('/admin/employees/approve/:id', requireLogin, requireRole('admin'), async (req, res) => {
+  const empId = req.params.id;
+  try {
+    await pool.query(
+      "UPDATE employees SET status = 'APPROVED', approved_at = (NOW() AT TIME ZONE 'Asia/Kolkata') WHERE id = $1",
+      [empId]
+    );
+    res.redirect('/admin?success=Employee approved successfully!');
+  } catch (err) {
+    console.error('Error approving employee:', err);
+    res.redirect('/admin?error=Error approving employee.');
+  }
+});
+
+app.post('/admin/employees/reject/:id', requireLogin, requireRole('admin'), async (req, res) => {
+  const empId = req.params.id;
+  try {
+    await pool.query("DELETE FROM employees WHERE id = $1 AND status = 'PENDING'", [empId]);
+    res.redirect('/admin?success=Employee registration rejected/deleted successfully.');
+  } catch (err) {
+    console.error('Error rejecting employee:', err);
+    res.redirect('/admin?error=Error rejecting employee.');
+  }
+});
+
+app.post('/admin/employees/add', requireLogin, requireRole('admin'), async (req, res) => {
+  const { employee_id, name, designation, password } = req.body;
+  try {
+    await pool.query(
+      `INSERT INTO employees (employee_id, name, designation, password, status, approved_at) 
+       VALUES ($1, $2, $3, $4, 'APPROVED', (NOW() AT TIME ZONE 'Asia/Kolkata'))`,
+      [employee_id.trim().toUpperCase(), name.trim(), designation.trim(), password]
+    );
+    res.redirect('/admin?success=Employee added successfully!');
+  } catch (err) {
+    console.error('Error adding employee:', err);
+    res.redirect('/admin?error=Error adding employee. Crew ID might already exist.');
+  }
+});
+
+app.post('/admin/employees/update', requireLogin, requireRole('admin'), async (req, res) => {
+  const { id, employee_id, name, designation, password } = req.body;
+  try {
+    await pool.query(
+      `UPDATE employees 
+       SET employee_id = $1, name = $2, designation = $3, password = $4 
+       WHERE id = $5`,
+      [employee_id.trim().toUpperCase(), name.trim(), designation.trim(), password, id]
+    );
+    res.redirect('/admin?success=Employee updated successfully!');
+  } catch (err) {
+    console.error('Error updating employee:', err);
+    res.redirect('/admin?error=Error updating employee. Crew ID might already exist.');
+  }
+});
+
+app.post('/admin/employees/delete', requireLogin, requireRole('admin'), async (req, res) => {
+  const { id } = req.body;
+  try {
+    await pool.query('DELETE FROM employees WHERE id = $1', [id]);
+    res.redirect('/admin?success=Employee deleted successfully!');
+  } catch (err) {
+    console.error('Error deleting employee:', err);
+    res.redirect('/admin?error=Error deleting employee.');
+  }
+});
+
+
 // --- FA (TRAINER / FORWARDING AUTHORITY) ROUTES ---
 
 app.get('/fa', requireLogin, requireRole('FA'), async (req, res) => {
@@ -209,27 +371,14 @@ app.post('/fa/certificates/create', requireLogin, requireRole('FA'), async (req,
   try {
     await client.query('BEGIN');
 
-    // 1. Check if user already exists
-    const userCheck = await client.query('SELECT * FROM users WHERE username = $1', [employee_id]);
-    
-    if (userCheck.rows.length === 0) {
-      // Automatically register the CE user (username and password set to employee_id)
-      await client.query(
-        `INSERT INTO users (name, designation, user_type, username, password)
-         VALUES ($1, $2, 'CE', $3, $3)`,
-        [employee_name, designation, employee_id]
-      );
-      console.log(`Automatically registered user CE: ${employee_id}`);
-    }
-
-    // 2. Calculate Validity Date (6 months minus 1 day)
+    // 1. Calculate Validity Date (6 months minus 1 day)
     const certDateObj = new Date(certified_date);
     const validDateObj = new Date(certDateObj);
     validDateObj.setMonth(validDateObj.getMonth() + 6);
     validDateObj.setDate(validDateObj.getDate() - 1);
     const formattedValidDate = validDateObj.toISOString().split('T')[0];
 
-    // 3. Insert pending certificate request
+    // 2. Insert pending certificate request
     await client.query(
       `INSERT INTO certificates (employee_id, employee_name, designation, certified_date, valid_upto, status, forwarded_by)
        VALUES ($1, $2, $3, $4, $5, 'PENDING', $6)`,
@@ -464,7 +613,7 @@ app.get('/certificate/view/:id', requireLogin, async (req, res) => {
               f.name as fa_name, f.designation as fa_designation,
               a.name as aa_name, a.designation as aa_designation
        FROM certificates c
-       LEFT JOIN users u ON c.employee_id = u.username
+       LEFT JOIN employees u ON c.employee_id = u.employee_id
        LEFT JOIN users f ON c.forwarded_by = f.username
        LEFT JOIN users a ON c.approved_by = a.username
        WHERE c.id = $1`,
@@ -517,7 +666,7 @@ app.get('/certificate/print-batch', requireLogin, async (req, res) => {
               f.name as fa_name, f.designation as fa_designation,
               a.name as aa_name, a.designation as aa_designation
        FROM certificates c
-       LEFT JOIN users u ON c.employee_id = u.username
+       LEFT JOIN employees u ON c.employee_id = u.employee_id
        LEFT JOIN users f ON c.forwarded_by = f.username
        LEFT JOIN users a ON c.approved_by = a.username
        WHERE c.id = ANY($1::int[]) AND c.status = 'APPROVED'`,

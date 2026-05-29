@@ -15,6 +15,7 @@ async function setupDatabase() {
 
     // Drop tables if they exist to start fresh
     await client.query('DROP TABLE IF EXISTS certificates CASCADE;');
+    await client.query('DROP TABLE IF EXISTS employees CASCADE;');
     await client.query('DROP TABLE IF EXISTS users CASCADE;');
 
     console.log('Creating "users" table...');
@@ -23,9 +24,23 @@ async function setupDatabase() {
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         designation VARCHAR(100) NOT NULL,
-        user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('admin', 'FA', 'AA', 'CE')),
+        user_type VARCHAR(20) NOT NULL CHECK (user_type IN ('admin', 'FA', 'AA')),
         username VARCHAR(50) UNIQUE NOT NULL,
         password VARCHAR(100) NOT NULL
+      );
+    `);
+
+    console.log('Creating "employees" table...');
+    await client.query(`
+      CREATE TABLE employees (
+        id SERIAL PRIMARY KEY,
+        employee_id VARCHAR(50) UNIQUE NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        designation VARCHAR(100) NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED')),
+        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        approved_at TIMESTAMP
       );
     `);
 
@@ -33,7 +48,7 @@ async function setupDatabase() {
     await client.query(`
       CREATE TABLE certificates (
         id SERIAL PRIMARY KEY,
-        employee_id VARCHAR(50) NOT NULL REFERENCES users(username) ON DELETE CASCADE,
+        employee_id VARCHAR(50) NOT NULL,
         employee_name VARCHAR(100) NOT NULL,
         designation VARCHAR(100) NOT NULL,
         certified_date DATE NOT NULL,
@@ -82,13 +97,21 @@ async function setupDatabase() {
       'interOP@123'
     ]);
 
+    console.log('Inserting seed employees...');
+    const insertEmployeeQuery = `
+      INSERT INTO employees (employee_id, name, designation, password, status, approved_at)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (employee_id) DO NOTHING;
+    `;
+
     // 4. Kommara Suresh (Certified Employee / CE)
-    await client.query(insertUserQuery, [
+    await client.query(insertEmployeeQuery, [
+      'mipm7602',
       'Kommara Suresh',
       'Sr TMR (G)/MIPM',
-      'CE',
       'mipm7602',
-      'mipm7602'
+      'APPROVED',
+      new Date()
     ]);
 
     console.log('Inserting sample approved certificate...');

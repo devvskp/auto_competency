@@ -13,6 +13,9 @@
         background: none !important;
       }
     }
+    .page-break-after {
+      page-break-after: always;
+    }
   </style>
 </head>
 <body style="background-color: #f1f5f9; padding: 0; margin: 0;">
@@ -31,7 +34,7 @@
 
     <% certificates.forEach((certificate, index) => { %>
       <!-- Certificate Block B5 landscape size -->
-      <div class="certificate-b5" style="margin-bottom: 2mm; page-break-inside: avoid; <%= index % 2 !== 0 ? 'page-break-after: always;' : '' %>">
+      <div class="certificate-b5 <%= index % 2 !== 0 ? 'page-break-after' : '' %>" style="margin-bottom: 2mm; page-break-inside: avoid;">
         <div class="cert-border-outer">
           <div class="cert-border-inner">
             

@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Employee Registration - Auto Competency Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" type="image/png" href="/images/ir.png">
+</head>
+<body>
+  <div class="login-wrapper" style="padding: 2rem 1rem;">
+    <div class="login-card" style="max-width: 520px; width: 100%;">
+      <div class="login-header">
+        <img src="/images/ir.png" alt="Indian Railways Logo" onerror="this.src='/images/ir.png'">
+        <h2>Employee Register</h2>
+        <p>Create credentials to access your competency certificate</p>
+      </div>
+
+      <% if (error) { %>
+        <div class="alert alert-danger" style="margin-bottom: 1.25rem;">
+          <span><%= error %></span>
+        </div>
+      <% } %>
+
+      <% if (success) { %>
+        <div class="alert alert-success" style="margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;">
+          <span style="font-weight: 600;"><%= success %></span>
+          <a href="/login" class="btn btn-primary" style="margin-top: 0.5rem; width: 100%; text-align: center; text-decoration: none;">Go to Sign In</a>
+        </div>
+      <% } else { %>
+        <form action="/register" method="POST" onsubmit="return validateForm()">
+          <!-- Autocomplete Employee Search (matches 4 chars) -->
+          <div class="form-group" style="position: relative;">
+            <label for="emp-search" style="display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                style="color: #60a5fa;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Search Crew ID / Name
+              <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(Type any 4 chars)</span>
+            </label>
+            <div style="position: relative;">
+              <input type="text" id="emp-search" class="form-control" autocomplete="off"
+                placeholder="Type ID or Name to search..."
+                style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;"
+                oninput="filterEmployees(this.value)" onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
+              <button type="button" id="emp-clear-btn" onclick="clearSelection()" style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+                  background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+                  color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px;
+                  display: none; align-items: center; justify-content: center; transition: all 0.2s ease; padding: 0;"
+                title="Clear selection">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <!-- Autocomplete dropdown -->
+            <div id="emp-dropdown" style="display:none; position: absolute; top: 100%; left: 0; right: 0; z-index: 999;
+              background: rgba(17,24,39,0.98); border: 1px solid var(--border-color); border-top: none;
+              border-radius: 0 0 10px 10px; max-height: 220px; overflow-y: auto;
+              box-shadow: 0 12px 32px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Employee Details</span>
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          </div>
+
+          <!-- Hidden/Readonly Employee Details Fields (Filled by autocomplete) -->
+          <div class="form-group">
+            <label for="employee_id">Crew ID / Employee ID</label>
+            <input type="text" id="employee_id" name="employee_id" class="form-control" 
+              style="background: rgba(255,255,255,0.02); color: var(--text-secondary); cursor: not-allowed;" readonly placeholder="Selected from search" required>
+          </div>
+
+          <div class="form-group">
+            <label for="employee_name">Full Name</label>
+            <input type="text" id="employee_name" name="employee_name" class="form-control" 
+              style="background: rgba(255,255,255,0.02); color: var(--text-secondary); cursor: not-allowed;" readonly placeholder="Selected from search" required>
+          </div>
+
+          <div class="form-group">
+            <label for="designation">Designation</label>
+            <input type="text" id="designation" name="designation" class="form-control" 
+              style="background: rgba(255,255,255,0.02); color: var(--text-secondary); cursor: not-allowed;" readonly placeholder="Selected from search" required>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0;">
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Set Password</span>
+            <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" class="form-control" placeholder="Enter password" required>
+          </div>
+
+          <div class="form-group">
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Re-enter password" required>
+            <span id="password-error" style="color: #ef4444; font-size: 0.78rem; display: none; margin-top: 0.35rem;">Passwords do not match</span>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.25rem; padding: 0.75rem;">
+            Submit Registration
+          </button>
+        </form>
+      <% } %>
+
+      <div style="text-align: center; margin-top: 1.25rem; font-size: 0.88rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <span style="color: var(--text-secondary);">Already registered? </span>
+        <a href="/login" style="color: #60a5fa; text-decoration: none; font-weight: 600; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'">Back to Sign In</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    Version 1.0 @ copyright 2026 by KOMMARA SURESH
+  </footer>
+
+  <script>
+    let empData = [];
+
+    // Fetch and parse the CSV on page load
+    fetch('/data/emp_data.csv')
+      .then(res => res.text())
+      .then(csvText => {
+        const lines = csvText.split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const parts = line.split(',');
+          if (parts.length < 5) continue;
+          const emp = {
+            s_no: parts[0].trim(),
+            employee_id: parts[1].trim().toUpperCase(),
+            employee_name: parts[2].trim(),
+            gender: parts[3].trim(),
+            designation: parts[4].trim()
+          };
+          if (emp.employee_id && emp.employee_name) {
+            empData.push(emp);
+          }
+        }
+      })
+      .catch(err => console.warn('Could not load employee data:', err));
+
+    function filterEmployees(query) {
+      const dropdown = document.getElementById('emp-dropdown');
+      query = query.trim().toUpperCase();
+
+      // Requires at least 4 characters to trigger search
+      if (query.length < 4 || empData.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Match by ID prefix/anywhere or name contains query
+      const matches = empData.filter(e =>
+        e.employee_id.includes(query) ||
+        e.employee_name.toUpperCase().includes(query)
+      ).slice(0, 15);
+
+      if (matches.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      dropdown.innerHTML = matches.map((e, idx) => `
+        <div class="emp-option" onmousedown="selectEmployee(${empData.indexOf(e)})"
+          style="padding: 0.65rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
+          onmouseover="this.style.background='rgba(59,130,246,0.12)'"
+          onmouseout="this.style.background='transparent'">
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">${e.employee_name}</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); font-family: monospace; margin-top: 1px;">${e.employee_id}</div>
+          </div>
+          <span style="font-size: 0.75rem; color: #a5b4fc; background: rgba(99,102,241,0.15);
+            padding: 0.15rem 0.5rem; border-radius: 4px; flex-shrink: 0; margin-left: 0.5rem;">${e.designation}</span>
+        </div>
+      `).join('');
+
+      dropdown.style.display = 'block';
+    }
+
+    function selectEmployee(idx) {
+      const emp = empData[idx];
+      if (!emp) return;
+
+      document.getElementById('employee_id').value = emp.employee_id;
+      document.getElementById('employee_name').value = emp.employee_name;
+      document.getElementById('designation').value = emp.designation;
+
+      document.getElementById('emp-search').value = emp.employee_id + ' — ' + emp.employee_name;
+      document.getElementById('emp-clear-btn').style.display = 'flex';
+      document.getElementById('emp-dropdown').style.display = 'none';
+    }
+
+    function clearSelection() {
+      document.getElementById('employee_id').value = '';
+      document.getElementById('employee_name').value = '';
+      document.getElementById('designation').value = '';
+      document.getElementById('emp-search').value = '';
+      document.getElementById('emp-clear-btn').style.display = 'none';
+      document.getElementById('emp-dropdown').style.display = 'none';
+      document.getElementById('emp-search').focus();
+    }
+
+    document.getElementById('emp-dropdown').addEventListener('mousedown', function (e) {
+      e.preventDefault();
+    });
+
+    function closeDropdown() {
+      const dropdown = document.getElementById('emp-dropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+
+    function validateForm() {
+      const empId = document.getElementById('employee_id').value;
+      const pass = document.getElementById('password').value;
+      const confirmPass = document.getElementById('confirm_password').value;
+      const errEl = document.getElementById('password-error');
+
+      if (!empId) {
+        alert("Please search and select your employee profile from the Crew ID search dropdown.");
+        return false;
+      }
+
+      if (pass !== confirmPass) {
+        errEl.style.display = 'block';
+        return false;
+      }
+
+      errEl.style.display = 'none';
+      return true;
+    }
+  </script>
+</body>
+</html>

@@ -61,20 +61,19 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              Quick Search from Employee List
-              <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(optional — or fill
-                manually below)</span>
+              CMS Search
+              <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(optional)</span>
             </label>
             <div style="position: relative;">
               <input type="text" id="emp-search" class="form-control" autocomplete="off"
                 placeholder="Type ID or Name to search and auto-fill..."
-                style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;" oninput="filterEmployees(this.value)"
-                onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
-              <button type="button" id="emp-clear-btn" onclick="clearSelection()"
-                style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+                style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;"
+                oninput="filterEmployees(this.value)" onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
+              <button type="button" id="emp-clear-btn" onclick="clearSelection()" style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
                   background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
                   color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px;
-                  align-items: center; justify-content: center; transition: all 0.2s ease; padding: 0;" title="Clear selection">
+                  align-items: center; justify-content: center; transition: all 0.2s ease; padding: 0;"
+                title="Clear selection">
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -136,7 +135,7 @@
           </div>
 
           <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
-            Forward to Approving Authority
+            Forward to AA
           </button>
         </form>
       </div>
@@ -501,7 +500,7 @@
 
       // Match by ID prefix or name contains query
       const matches = empData.filter(e =>
-        e.employee_id.startsWith(query) ||
+        e.employee_id.includes(query) ||
         e.employee_name.toUpperCase().includes(query)
       ).slice(0, 15); // Show max 15 results
 
@@ -565,7 +564,7 @@
     }
 
     // Prevent dropdown from closing when clicking inside it (prevents blur race conditions)
-    document.getElementById('emp-dropdown').addEventListener('mousedown', function(e) {
+    document.getElementById('emp-dropdown').addEventListener('mousedown', function (e) {
       e.preventDefault();
     });
 

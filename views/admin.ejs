@@ -6,6 +6,11 @@
   <title>Admin Dashboard - Auto Competency Portal</title>
   <link rel="stylesheet" href="/css/style.css">
   <link rel="icon" type="image/png" href="/images/ir.png">
+  <style>
+    .tab-btn:hover {
+      color: var(--text-primary) !important;
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -15,7 +20,7 @@
     </div>
     <div class="nav-user">
       <div class="user-tag">
-      <span class="user-name-text"><%= user.name %></span>
+        <span class="user-name-text"><%= user.name %></span>
         <span class="role-badge"><%= user.user_type %></span>
       </div>
       <a href="/logout" class="btn-logout">Logout</a>
@@ -25,18 +30,33 @@
   <main>
     <div class="page-heading">
       <h2>System Administrator Panel</h2>
-      <p>Manage employee registers, trainers, and approval authority accounts.</p>
+      <p>Manage system user credentials and the registered employee database.</p>
     </div>
 
     <!-- Alert Notifications -->
     <div id="alerts-container"></div>
 
-    <div class="admin-grid">
+    <!-- Tabs Navigation -->
+    <div class="tabs-container" style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap;">
+      <button class="tab-btn" id="tab-users-btn" onclick="switchTab('users')" style="background: transparent; border: none; color: var(--text-secondary); font-size: 1rem; font-weight: 500; padding: 0.5rem 1rem; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -0.65rem; transition: all 0.2s;">
+        System Users (Admin / FA / AA)
+      </button>
+      <button class="tab-btn active" id="tab-employees-btn" onclick="switchTab('employees')" style="background: transparent; border: none; color: var(--text-primary); font-size: 1rem; font-weight: 600; padding: 0.5rem 1rem; cursor: pointer; border-bottom: 3px solid #60a5fa; margin-bottom: -0.65rem; transition: all 0.2s;">
+        Employee Register (CE)
+        <% const pendingCount = employees.filter(e => e.status === 'PENDING').length; %>
+        <% if (pendingCount > 0) { %>
+          <span style="background: #ef4444; color: white; border-radius: 10px; padding: 0.1rem 0.4rem; font-size: 0.72rem; font-weight: bold; margin-left: 0.4rem;"><%= pendingCount %> pending</span>
+        <% } %>
+      </button>
+    </div>
+
+    <!-- TAB 1: SYSTEM USERS CONTENT -->
+    <div class="admin-grid" id="tab-users-content" style="display: none;">
       <!-- Forms Column -->
       <div>
         <!-- Create User Card -->
         <div class="card" id="create-card">
-          <div class="card-title">Register New User</div>
+          <div class="card-title">Register New System User</div>
           <form action="/admin/users/create" method="POST">
             <div class="form-group">
               <label for="name">Full Name</label>
@@ -51,7 +71,6 @@
             <div class="form-group">
               <label for="user_type">User Role</label>
               <select id="user_type" name="user_type" class="form-control" required>
-                <option value="CE">Certified Employee (CE)</option>
                 <option value="FA">Forwarding Authority / Trainer (FA)</option>
                 <option value="AA">Approving Authority (AA)</option>
                 <option value="admin">System Administrator</option>
@@ -59,8 +78,8 @@
             </div>
 
             <div class="form-group">
-              <label for="username">Username / Employee ID</label>
-              <input type="text" id="username" name="username" class="form-control" placeholder="e.g. mipm7602" required>
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username" class="form-control" placeholder="e.g. s किशोर" required>
             </div>
 
             <div class="form-group">
@@ -77,7 +96,7 @@
         <!-- Edit User Card (Hidden by default) -->
         <div class="card" id="edit-card" style="display: none; border-color: var(--accent-color);">
           <div class="card-title">
-            <span>Modify User Account</span>
+            <span>Modify System User</span>
             <button onclick="cancelEdit()" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Cancel</button>
           </div>
           <form action="/admin/users/update" method="POST">
@@ -96,7 +115,6 @@
             <div class="form-group">
               <label for="edit-user_type">User Role</label>
               <select id="edit-user_type" name="user_type" class="form-control" required>
-                <option value="CE">Certified Employee (CE)</option>
                 <option value="FA">Forwarding Authority / Trainer (FA)</option>
                 <option value="AA">Approving Authority (AA)</option>
                 <option value="admin">System Administrator</option>
@@ -104,7 +122,7 @@
             </div>
 
             <div class="form-group">
-              <label for="edit-username">Username / Employee ID</label>
+              <label for="edit-username">Username</label>
               <input type="text" id="edit-username" name="username" class="form-control" required>
             </div>
 
@@ -122,7 +140,7 @@
 
       <!-- Users List Column -->
       <div class="card">
-        <div class="card-title">Registered Accounts Register</div>
+        <div class="card-title">System Accounts Register</div>
         <div class="table-container">
           <table>
             <thead>
@@ -148,14 +166,14 @@
                   <td data-label="Username" style="font-family: monospace;"><%= u.username %></td>
                   <td data-label="Password"><code><%= u.password %></code></td>
                   <td data-label="Actions">
-                      <div class="table-actions">
-                      <button onclick="startEdit(<%= JSON.stringify(u) %>)" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                    <div class="table-actions">
+                      <button data-user="<%- JSON.stringify(u).replace(/"/g, '&quot;') %>" onclick="startEdit(JSON.parse(this.dataset.user))" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
                         Edit
                       </button>
                       
                       <!-- Prevent admin self deletion -->
                       <% if (u.username !== user.username) { %>
-                        <form action="/admin/users/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this user?');" style="margin: 0;">
+                        <form action="/admin/users/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this system account?');" style="margin: 0;">
                           <input type="hidden" name="id" value="<%= u.id %>">
                           <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color);">
                             Delete
@@ -168,6 +186,231 @@
               <% }) %>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- TAB 2: EMPLOYEE REGISTER CONTENT -->
+    <div class="admin-grid" id="tab-employees-content">
+      <!-- Forms Column -->
+      <div>
+        <!-- Create Employee Card -->
+        <div class="card" id="create-emp-card">
+          <div class="card-title">Add Certified Employee (Direct)</div>
+          <form action="/admin/employees/add" method="POST" onsubmit="return validateDirectEmployeeForm()">
+            <!-- Employee Quick Search -->
+            <div class="form-group" style="position: relative;">
+              <label for="emp-search" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                  style="color: #60a5fa;">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                Search Crew ID / Name
+                <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(Type any 4 chars)</span>
+              </label>
+              <div style="position: relative;">
+                <input type="text" id="emp-search" class="form-control" autocomplete="off"
+                  placeholder="Type ID or Name to search..."
+                  style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;"
+                  oninput="filterEmployees(this.value)" onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
+                <button type="button" id="emp-clear-btn" onclick="clearSelection()" style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
+                    background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
+                    color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px;
+                    align-items: center; justify-content: center; transition: all 0.2s ease; padding: 0;"
+                  title="Clear selection">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+              <!-- Autocomplete dropdown -->
+              <div id="emp-dropdown" style="display:none; position: absolute; top: 100%; left: 0; right: 0; z-index: 999;
+                background: rgba(17,24,39,0.98); border: 1px solid var(--border-color); border-top: none;
+                border-radius: 0 0 10px 10px; max-height: 220px; overflow-y: auto;
+                box-shadow: 0 12px 32px rgba(0,0,0,0.5); backdrop-filter: blur(12px);">
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0;">
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Employee Details</span>
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="emp-employee_id">Crew ID / Employee ID</label>
+              <input type="text" id="emp-employee_id" name="employee_id" class="form-control" 
+                placeholder="e.g. MIPM7602" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="emp-name">Full Name</label>
+              <input type="text" id="emp-name" name="name" class="form-control" 
+                placeholder="e.g. Kommara Suresh" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="emp-designation">Designation</label>
+              <input type="text" id="emp-designation" name="designation" class="form-control" 
+                placeholder="e.g. Sr TMR (G)/MIPM" required>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0;">
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+              <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Set Password</span>
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="emp-password">Password</label>
+              <input type="text" id="emp-password" name="password" class="form-control" placeholder="Set password" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 0.5rem;">
+              Add & Approve Employee
+            </button>
+          </form>
+        </div>
+
+        <!-- Edit Employee Card (Hidden by default) -->
+        <div class="card" id="edit-emp-card" style="display: none; border-color: var(--accent-color);">
+          <div class="card-title">
+            <span>Modify Employee Data</span>
+            <button type="button" onclick="cancelEditEmployee()" class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.75rem;">Cancel</button>
+          </div>
+          <form action="/admin/employees/update" method="POST">
+            <input type="hidden" id="edit-emp-id" name="id">
+            
+            <div class="form-group">
+              <label for="edit-emp-employee_id">Crew ID / Employee ID</label>
+              <input type="text" id="edit-emp-employee_id" name="employee_id" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-emp-name">Full Name</label>
+              <input type="text" id="edit-emp-name" name="name" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="edit-emp-designation">Designation</label>
+              <input type="text" id="edit-emp-designation" name="designation" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label for="edit-emp-password">Password</label>
+              <input type="text" id="edit-emp-password" name="password" class="form-control" required>
+            </div>
+
+            <button type="submit" class="btn btn-success" style="width: 100%; margin-top: 0.5rem;">
+              Save Modifications
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Employees Tables Column -->
+      <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <!-- Pending Approvals Card -->
+        <% const pendingEmployees = employees.filter(e => e.status === 'PENDING'); %>
+        <% if (pendingEmployees.length > 0) { %>
+          <div class="card" style="border-left: 4px solid #f59e0b;">
+            <div class="card-title" style="color: #f59e0b; display: flex; align-items: center; gap: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              Pending Employee Approvals
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Crew ID</th>
+                    <th>Name</th>
+                    <th>Designation</th>
+                    <th>Req. Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% pendingEmployees.forEach(e => { %>
+                    <tr>
+                      <td data-label="Crew ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
+                      <td data-label="Name" style="font-weight: 600;"><%= e.name %></td>
+                      <td data-label="Designation"><%= e.designation %></td>
+                      <td data-label="Req. Date"><%= formatIST(e.registered_at) %></td>
+                      <td data-label="Actions">
+                        <div class="table-actions" style="gap: 0.4rem;">
+                          <form action="/admin/employees/approve/<%= e.id %>" method="POST" style="margin: 0;">
+                            <button type="submit" class="btn btn-primary" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; background: #10b981; border-color: #10b981;">
+                              Approve
+                            </button>
+                          </form>
+                          <form action="/admin/employees/reject/<%= e.id %>" method="POST" onsubmit="return confirm('Are you sure you want to reject this registration request?');" style="margin: 0;">
+                            <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.65rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color);">
+                              Reject
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        <% } %>
+
+        <!-- Approved Register Card -->
+        <div class="card">
+          <div class="card-title">Approved Employee Register</div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Crew ID</th>
+                  <th>Name</th>
+                  <th>Designation</th>
+                  <th>Password</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% const approvedEmployees = employees.filter(e => e.status === 'APPROVED'); %>
+                <% if (approvedEmployees.length === 0) { %>
+                  <tr>
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                      No approved employees in register yet.
+                    </td>
+                  </tr>
+                <% } else { %>
+                  <% approvedEmployees.forEach(e => { %>
+                    <tr>
+                      <td data-label="Crew ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
+                      <td data-label="Name" style="font-weight: 600;"><%= e.name %></td>
+                      <td data-label="Designation"><%= e.designation %></td>
+                      <td data-label="Password"><code><%= e.password %></code></td>
+                      <td data-label="Actions">
+                        <div class="table-actions">
+                          <button data-employee="<%- JSON.stringify(e).replace(/"/g, '&quot;') %>" onclick="startEditEmployee(JSON.parse(this.dataset.employee))" class="btn btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.8rem;">
+                            Edit
+                          </button>
+                          <form action="/admin/employees/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this employee?');" style="margin: 0;">
+                            <input type="hidden" name="id" value="<%= e.id %>">
+                            <button type="submit" class="btn btn-danger" style="padding: 0.35rem 0.75rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.3); color: var(--danger-color);">
+                              Delete
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -239,7 +482,6 @@
     
     if (successMsg) {
       showAlert(successMsg, 'success');
-      // Clean URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
     }
     if (errorMsg) {
@@ -247,13 +489,12 @@
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // System User edit helpers
     function startEdit(user) {
-      // Hide create form and display edit form
       document.getElementById('create-card').style.display = 'none';
       const editCard = document.getElementById('edit-card');
       editCard.style.display = 'block';
 
-      // Populate edit fields
       document.getElementById('edit-id').value = user.id;
       document.getElementById('edit-name').value = user.name;
       document.getElementById('edit-designation').value = user.designation;
@@ -261,7 +502,6 @@
       document.getElementById('edit-username').value = user.username;
       document.getElementById('edit-password').value = user.password;
 
-      // Scroll to forms column
       editCard.scrollIntoView({ behavior: 'smooth' });
     }
 
@@ -269,7 +509,177 @@
       document.getElementById('edit-card').style.display = 'none';
       document.getElementById('create-card').style.display = 'block';
     }
+
+    // Employee edit helpers
+    function startEditEmployee(emp) {
+      document.getElementById('create-emp-card').style.display = 'none';
+      const editEmpCard = document.getElementById('edit-emp-card');
+      editEmpCard.style.display = 'block';
+
+      document.getElementById('edit-emp-id').value = emp.id;
+      document.getElementById('edit-emp-employee_id').value = emp.employee_id;
+      document.getElementById('edit-emp-name').value = emp.name;
+      document.getElementById('edit-emp-designation').value = emp.designation;
+      document.getElementById('edit-emp-password').value = emp.password;
+
+      editEmpCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEditEmployee() {
+      document.getElementById('edit-emp-card').style.display = 'none';
+      document.getElementById('create-emp-card').style.display = 'block';
+    }
+
+    // Tab switcher
+    function switchTab(tab) {
+      const usersBtn = document.getElementById('tab-users-btn');
+      const empsBtn = document.getElementById('tab-employees-btn');
+      const usersContent = document.getElementById('tab-users-content');
+      const empsContent = document.getElementById('tab-employees-content');
+
+      if (tab === 'users') {
+        usersBtn.style.color = 'var(--text-primary)';
+        usersBtn.style.borderBottomColor = '#60a5fa';
+        usersBtn.style.fontWeight = '600';
+
+        empsBtn.style.color = 'var(--text-secondary)';
+        empsBtn.style.borderBottomColor = 'transparent';
+        empsBtn.style.fontWeight = '500';
+
+        usersContent.style.display = 'grid';
+        empsContent.style.display = 'none';
+      } else {
+        empsBtn.style.color = 'var(--text-primary)';
+        empsBtn.style.borderBottomColor = '#60a5fa';
+        empsBtn.style.fontWeight = '600';
+
+        usersBtn.style.color = 'var(--text-secondary)';
+        usersBtn.style.borderBottomColor = 'transparent';
+        usersBtn.style.fontWeight = '500';
+
+        empsContent.style.display = 'grid';
+        usersContent.style.display = 'none';
+      }
+    }
+
+    // ========================================================
+    // EMPLOYEE AUTOCOMPLETE FROM CSV FOR DIRECT CREATION
+    // ========================================================
+    let empData = [];
+
+    // Fetch and parse the CSV on page load
+    fetch('/data/emp_data.csv')
+      .then(res => res.text())
+      .then(csvText => {
+        const lines = csvText.split('\n');
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          const parts = line.split(',');
+          if (parts.length < 5) continue;
+          const emp = {
+            s_no: parts[0].trim(),
+            employee_id: parts[1].trim().toUpperCase(),
+            employee_name: parts[2].trim(),
+            gender: parts[3].trim(),
+            designation: parts[4].trim()
+          };
+          if (emp.employee_id && emp.employee_name) {
+            empData.push(emp);
+          }
+        }
+      })
+      .catch(err => console.warn('Could not load employee data:', err));
+
+    function filterEmployees(query) {
+      const dropdown = document.getElementById('emp-dropdown');
+      query = query.trim().toUpperCase();
+
+      // Requires at least 4 characters to trigger search
+      if (query.length < 4 || empData.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      // Match by ID prefix/anywhere or name contains query
+      const matches = empData.filter(e =>
+        e.employee_id.includes(query) ||
+        e.employee_name.toUpperCase().includes(query)
+      ).slice(0, 15);
+
+      if (matches.length === 0) {
+        dropdown.style.display = 'none';
+        return;
+      }
+
+      dropdown.innerHTML = matches.map((e, idx) => `
+        <div class="emp-option" onmousedown="selectEmployee(${empData.indexOf(e)})"
+          style="padding: 0.65rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
+          onmouseover="this.style.background='rgba(59,130,246,0.12)'"
+          onmouseout="this.style.background='transparent'">
+          <div>
+            <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">${e.employee_name}</div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); font-family: monospace; margin-top: 1px;">${e.employee_id}</div>
+          </div>
+          <span style="font-size: 0.75rem; color: #a5b4fc; background: rgba(99,102,241,0.15);
+            padding: 0.15rem 0.5rem; border-radius: 4px; flex-shrink: 0; margin-left: 0.5rem;">${e.designation}</span>
+        </div>
+      `).join('');
+
+      dropdown.style.display = 'block';
+    }
+
+    function selectEmployee(idx) {
+      const emp = empData[idx];
+      if (!emp) return;
+
+      document.getElementById('emp-employee_id').value = emp.employee_id;
+      document.getElementById('emp-name').value = emp.employee_name;
+      document.getElementById('emp-designation').value = emp.designation;
+
+      document.getElementById('emp-search').value = emp.employee_id + ' — ' + emp.employee_name;
+      document.getElementById('emp-clear-btn').style.display = 'flex';
+      document.getElementById('emp-dropdown').style.display = 'none';
+    }
+
+    function clearSelection() {
+      document.getElementById('emp-employee_id').value = '';
+      document.getElementById('emp-name').value = '';
+      document.getElementById('emp-designation').value = '';
+      document.getElementById('emp-search').value = '';
+      document.getElementById('emp-clear-btn').style.display = 'none';
+      document.getElementById('emp-dropdown').style.display = 'none';
+      document.getElementById('emp-search').focus();
+    }
+
+    // Prevent dropdown from closing when clicking inside it
+    if (document.getElementById('emp-dropdown')) {
+      document.getElementById('emp-dropdown').addEventListener('mousedown', function (e) {
+        e.preventDefault();
+      });
+    }
+
+    function closeDropdown() {
+      const dropdown = document.getElementById('emp-dropdown');
+      if (dropdown) dropdown.style.display = 'none';
+    }
+
+    function validateDirectEmployeeForm() {
+      const empId = document.getElementById('emp-employee_id').value.trim();
+      const name = document.getElementById('emp-name').value.trim();
+      const designation = document.getElementById('emp-designation').value.trim();
+      if (!empId || !name || !designation) {
+        alert("Please provide the Crew ID, Full Name, and Designation of the employee.");
+        return false;
+      }
+      return true;
+    }
+
+    // Restore active tab on load (always defaults to employees)
+    document.addEventListener('DOMContentLoaded', () => {
+      switchTab('employees');
+    });
   </script>
 </body>
 </html>
-
