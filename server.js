@@ -453,7 +453,7 @@ app.post('/aa/certificates/approve/:id', requireLogin, requireRole('AA'), async 
     }
 
     // 2. Determine the next serial number for year 2026 (or extract year from certified date)
-    // The format is: WTS/AC/118/2026/XXXX
+    // The format is: VTS/AC/118/2026/XXXX
     // We search the certificates table for the highest serial number in 2026
     const certifiedDate = new Date(checkResult.rows[0].certified_date);
     const certYear = certifiedDate.getFullYear();
@@ -463,12 +463,12 @@ app.post('/aa/certificates/approve/:id', requireLogin, requireRole('AA'), async 
       `SELECT COALESCE(MAX(serial_number), 0) as max_sn 
        FROM certificates 
        WHERE cert_number LIKE $1`,
-      [`WTS/AC/118/${certYear}/${certMonth}/%`]
+      [`VTS/AC/118/${certYear}/${certMonth}/%`]
     );
 
     const nextSerial = serialResult.rows[0].max_sn + 1;
     const paddedSerial = String(nextSerial).padStart(2, '0');
-    const certNumber = `WTS/AC/118/${certYear}/${certMonth}/${paddedSerial}`;
+    const certNumber = `VTS/AC/118/${certYear}/${certMonth}/${paddedSerial}`;
 
     // 3. Update the certificate row
     await client.query(
@@ -522,12 +522,12 @@ app.post('/aa/certificates/approve-batch', requireLogin, requireRole('AA'), asyn
         `SELECT COALESCE(MAX(serial_number), 0) as max_sn 
          FROM certificates 
          WHERE cert_number LIKE $1`,
-        [`WTS/AC/118/${certYear}/${certMonth}/%`]
+        [`VTS/AC/118/${certYear}/${certMonth}/%`]
       );
 
       const nextSerial = serialResult.rows[0].max_sn + 1;
       const paddedSerial = String(nextSerial).padStart(2, '0');
-      const certNumber = `WTS/AC/118/${certYear}/${certMonth}/${paddedSerial}`;
+      const certNumber = `VTS/AC/118/${certYear}/${certMonth}/${paddedSerial}`;
 
       // Update the certificate row
       await client.query(
@@ -601,6 +601,41 @@ app.get('/ce', requireLogin, requireRole('CE'), async (req, res) => {
 });
 
 
+// --- PUBLIC CERTIFICATE DOWNLOAD ROUTE (FOR QR CODE) ---
+app.get('/certificate/download/:id', async (req, res) => {
+  const certId = req.params.id;
+  try {
+    const result = await pool.query(
+      `SELECT c.*, 
+              u.name as employee_real_name, u.designation as employee_designation,
+              f.name as fa_name, f.designation as fa_designation,
+              a.name as aa_name, a.designation as aa_designation
+       FROM certificates c
+       LEFT JOIN employees u ON c.employee_id = u.employee_id
+       LEFT JOIN users f ON c.forwarded_by = f.username
+       LEFT JOIN users a ON c.approved_by = a.username
+       WHERE c.id = $1`,
+      [certId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send('Certificate not found.');
+    }
+
+    const certificate = result.rows[0];
+
+    if (certificate.status !== 'APPROVED') {
+      return res.status(400).send('Certificate is not approved yet.');
+    }
+
+    const downloadUrl = `https://autocertify.vercel.app/certificate/download/${certificate.id}`;
+    res.render('certificate', { certificate, downloadUrl });
+  } catch (err) {
+    console.error('Error in public download route:', err);
+    res.status(500).send('Database error.');
+  }
+});
+
 // --- GENERAL CERTIFICATE VIEW ROUTE ---
 
 app.get('/certificate/view/:id', requireLogin, async (req, res) => {
@@ -641,7 +676,8 @@ app.get('/certificate/view/:id', requireLogin, async (req, res) => {
       return res.status(400).send('Certificate is not approved yet.');
     }
 
-    res.render('certificate', { certificate });
+    const downloadUrl = `https://autocertify.vercel.app/certificate/download/${certificate.id}`;
+    res.render('certificate', { certificate, downloadUrl });
   } catch (err) {
     console.error('Error fetching certificate:', err);
     res.status(500).send('Database error.');
@@ -677,7 +713,11 @@ app.get('/certificate/print-batch', requireLogin, async (req, res) => {
       return res.status(404).send('No valid approved certificates found for printing.');
     }
 
-    res.render('certificate_batch', { certificates: result.rows });
+    res.render('certificate_batch', { 
+      certificates: result.rows,
+      protocol: req.protocol,
+      host: req.get('host')
+    });
   } catch (err) {
     console.error('Error fetching batch certificates:', err);
     res.status(500).send('Database error.');
@@ -690,6 +730,26 @@ app.use((req, res) => {
   res.status(404).send('Page Not Found');
 });
 
-app.listen(PORT, () => {
+const os = require('os');
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on http://localhost:${PORT}`);
+  
+  // Find local network IP address
+  const networkInterfaces = os.networkInterfaces();
+  let localIp = null;
+  for (const name of Object.keys(networkInterfaces)) {
+    for (const net of networkInterfaces[name]) {
+      // Support Node.js 18+ where family is numeric (4) or string ('IPv4')
+      const isIPv4 = net.family === 'IPv4' || net.family === 4;
+      if (isIPv4 && !net.internal) {
+        localIp = net.address;
+        break;
+      }
+    }
+    if (localIp) break;
+  }
+  
+  if (localIp) {
+    console.log(`To access on your mobile phone / local network: http://${localIp}:${PORT}`);
+  }
 });

@@ -82,7 +82,7 @@ async function setupDatabase() {
     // 2. S. Kishore (Approving Authority / AA)
     await client.query(insertUserQuery, [
       'S. Kishore',
-      'Ch.TI (Traffic Safety) / WAT',
+      'Ch.TI (Traffic Safety) / VSKP',
       'AA',
       'cti',
       'aa@cti'
@@ -117,7 +117,7 @@ async function setupDatabase() {
     console.log('Inserting sample approved certificate...');
     // Seed approved certificate for Kommara Suresh
     // Name: Kommara Suresh, Designation: Sr TMR (G)/MIPM, Username: mipm7602
-    // certified date: 21-05-2026, valid upto: 20-11-2026, cert number: WTS/AC/118/2026/0001
+    // certified date: 21-05-2026, valid upto: 20-11-2026, cert number: VTS/AC/118/2026/0001
     await client.query(`
       INSERT INTO certificates (
         employee_id, employee_name, designation, certified_date, valid_upto, 
@@ -129,7 +129,7 @@ async function setupDatabase() {
       'Sr TMR (G)/MIPM',
       '2026-05-21', // 21-05-2026
       '2026-11-20', // 20-11-2026
-      'WTS/AC/118/2026/0001',
+      'VTS/AC/118/2026/0001',
       1,
       'APPROVED',
       'tmc', // Forwarded by FA Prasad

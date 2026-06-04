@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Batch Certificates</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=3">
   <link rel="icon" type="image/png" href="/images/ir.png">
   <style>
     /* Prevent default web background in print */
@@ -47,11 +47,11 @@
               <!-- Header Section -->
               <div class="cert-header" style="position: relative; width: 100%; margin-bottom: 2mm; height: 18mm;">
                 <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);">
-                  <img src="/images/East Coast Railway.png" class="cert-logo" alt="East Coast Railway Logo" style="height: 18mm; margin: 0;">
+                  <img src="/images/IE.png" class="cert-logo" alt="Indian Emblem" style="height: 18mm; margin: 0;">
                 </div>
                 <div style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
-                  <div class="cert-title-railway" style="font-size: 16pt; margin-bottom: 2px;">EAST COAST RAILWAY</div>
-                  <div class="cert-title-railway" style="font-size: 12pt;">WALTAIR DIVISION</div>
+                  <div class="cert-title-railway" style="font-size: 16pt; margin-bottom: 2px;">SOUTH COAST RAILWAY</div>
+                  <div class="cert-title-railway" style="font-size: 12pt;">VISAKHAPATNAM DIVISION</div>
                 </div>
                 <div style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">
                   <img src="/images/ir.png" class="cert-logo" alt="IR Emblem" style="height: 16.2mm; margin: 0;">
@@ -82,7 +82,7 @@
                 const rawDesig = certificate.designation || '';
                 const slashIdx = rawDesig.lastIndexOf('/');
                 let desigVal = rawDesig;
-                let baseVal = 'WAT'; // Fallback
+                let baseVal = 'VSKP'; // Fallback
                 
                 if (slashIdx !== -1) {
                   desigVal = rawDesig.substring(0, slashIdx).trim();
@@ -113,8 +113,16 @@
                 </div>
               </div>
 
-              <!-- Footer / Digitally Signed Mark & AA Details on the Right -->
-              <div class="cert-footer">
+              <!-- Footer / Digitally Signed Mark & AA Details on the Right, QR Code on the Left -->
+              <div class="cert-footer" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; padding: 0 4mm;">
+                
+                <!-- QR Code Container -->
+                <div class="cert-qr-box" style="display: flex; flex-direction: column; align-items: center; gap: 1mm; margin-bottom: 1.5mm;">
+                  <div style="font-size: 6.5pt; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-header);">Scan to Verify</div>
+                  <img class="cert-qr-image-batch" data-cert-id="<%= certificate.id %>" src="" alt="Verification QR Code" style="width: 20mm; height: 20mm; display: block; border: 1.5px solid #1e3a8a; padding: 1mm; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                </div>
+
+                <!-- Signature Box -->
                 <div class="cert-signature-box">
                   <div class="digitally-signed-mark">Digitally Signed By</div>
                   <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
@@ -135,7 +143,7 @@
                   </div>
                   <div class="cert-sig-name"><%= certificate.aa_name %></div>
                   <div class="cert-sig-designation"><%= certificate.aa_designation %></div>
-                  <div class="cert-sig-org">East Coast Railway</div>
+                  <div class="cert-sig-org">South Coast Railway</div>
                 </div>
               </div>
 
@@ -146,5 +154,13 @@
     <% }) %>
   </div>
 
+  <script>
+    // Dynamically set the QR Code image sources for all certificates in the batch
+    document.querySelectorAll('.cert-qr-image-batch').forEach(img => {
+      const certId = img.getAttribute('data-cert-id');
+      const downloadUrl = 'https://autocertify.vercel.app/certificate/download/' + certId;
+      img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(downloadUrl);
+    });
+  </script>
 </body>
 </html>

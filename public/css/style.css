@@ -1,6 +1,6 @@
 /* Premium CSS Design System - Railway Competency System */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Special+Elite&display=swap');
 
 :root {
   --bg-color: #0b0f19;
@@ -531,9 +531,50 @@ tr:hover {
 }
 
 .cert-actions {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.5mm;
   display: flex;
   gap: 1rem;
+}
+
+/* Scale Wrapper for mobile responsiveness */
+:root {
+  --cert-scale: 1;
+}
+
+@media (max-width: 840px) {
+  :root {
+    --cert-scale: 0.9;
+  }
+}
+@media (max-width: 768px) {
+  :root {
+    --cert-scale: 0.8;
+  }
+}
+@media (max-width: 640px) {
+  :root {
+    --cert-scale: 0.68;
+  }
+}
+@media (max-width: 480px) {
+  :root {
+    --cert-scale: 0.48;
+  }
+}
+@media (max-width: 380px) {
+  :root {
+    --cert-scale: 0.4;
+  }
+}
+
+.cert-scale-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  width: 100%;
+  overflow: visible;
+  height: calc(148mm * var(--cert-scale));
+  margin-bottom: 2rem;
 }
 
 /* Exact Landscape A5 Dimensions (210mm x 148mm) */
@@ -550,6 +591,28 @@ tr:hover {
   flex-direction: column;
   justify-content: space-between;
   border-radius: 4px;
+  
+  /* Scale transformation for mobile responsiveness */
+  transform: scale(var(--cert-scale));
+  transform-origin: top center;
+  flex-shrink: 0;
+}
+
+@media print {
+  :root {
+    --cert-scale: 1 !important;
+  }
+  .cert-scale-wrapper {
+    height: auto !important;
+    display: block !important;
+    margin-bottom: 0 !important;
+    page-break-inside: avoid !important;
+  }
+  .certificate-b5 {
+    transform: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
 }
 
 /* Contemporary Premium Certificate Border */
@@ -765,10 +828,11 @@ tr:hover {
   text-align: center;
   width: 65mm;
   position: relative;
-  border: 1px dashed rgba(30, 58, 138, 0.2);
+  border: none;
   padding: 1.5mm;
-  border-radius: 6px;
-  background: rgba(248, 250, 252, 0.6);
+  background: none;
+  /* Slight rotation to simulate a realistic manual stamp impression */
+  transform: rotate(-1.2deg);
 }
 
 .digitally-signed-mark {
@@ -804,22 +868,39 @@ tr:hover {
 }
 
 .cert-sig-name {
-  font-size: 9.5pt;
+  font-family: 'Special Elite', 'Courier New', Courier, monospace;
+  font-size: 11pt;
   font-weight: 700;
-  color: #0f172a;
+  color: #283593; /* Realistic Indigo stamp ink */
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  white-space: nowrap;
 }
 
 .cert-sig-designation {
+  font-family: 'Special Elite', 'Courier New', Courier, monospace;
   font-size: 8pt;
-  color: #475569;
+  font-weight: 700;
+  color: #283593;
   line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-top: 0.5mm;
+  display: block;
+  white-space: nowrap;
 }
 
 .cert-sig-org {
-  font-size: 7.5pt;
-  color: #64748b;
+  font-family: 'Special Elite', 'Courier New', Courier, monospace;
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #283593;
   text-transform: uppercase;
   margin-top: 0.5mm;
+  letter-spacing: 0.5px;
+  display: block;
+  white-space: nowrap;
 }
 
 /* PAGE HEADING UTILITY */
