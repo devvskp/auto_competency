@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Certificate - <%= certificate.cert_number %></title>
+  <title>Certificate - <%= certificate.cert_number %>
+  </title>
   <link rel="stylesheet" href="/css/style.css?v=3">
   <link rel="icon" type="image/png" href="/images/ir.png">
+  <!-- html2pdf library for direct client-side PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     /* Prevent default web background in print */
     @media print {
@@ -13,34 +17,58 @@
         background: none !important;
       }
     }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
 </head>
+
 <body style="background-color: #f1f5f9; padding: 0; margin: 0;">
-  
+
   <div class="cert-page-container">
+    <!-- Auto-downloading Overlay message -->
+    <div id="download-status-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px); z-index: 9999; justify-content: center; align-items: center; flex-direction: column; color: white; font-family: 'Outfit', sans-serif;">
+      <div style="background: #1e293b; padding: 2.5rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); text-align: center; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 1rem;">
+        <div class="spinner" style="width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-left-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700;">Generating Certificate PDF</h3>
+        <p id="download-status-text" style="margin: 0; color: #94a3b8; font-size: 0.9rem; line-height: 1.5;">Please wait while we compile your high-quality digital certificate. It will download automatically.</p>
+        <button id="btn-close-overlay" onclick="document.getElementById('download-status-overlay').style.display='none'" class="btn btn-secondary" style="margin-top: 0.5rem; display: none; padding: 0.5rem 1.25rem; font-size: 0.85rem;">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- Close Button (fixed top-right, hidden during print) -->
+    <button onclick="window.close()" class="cert-close-btn" title="Close Window" aria-label="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
     <!-- Action buttons (Hidden during printing) -->
     <div class="cert-actions">
-      <button onclick="window.close()" class="btn btn-secondary">✕ Close Window</button>
       <button onclick="window.print()" class="btn btn-primary">🖨️ Print / Save as PDF</button>
     </div>
 
-    <!-- Certificate Block B5 landscape size -->
-    <div class="certificate-b5">
+    <!-- Scale wrapper to ensure correct layout and responsiveness on mobile/safari/iOS -->
+    <div class="cert-scale-wrapper">
+      <!-- Certificate Block B5 landscape size -->
+      <div class="certificate-b5">
       <div class="cert-border-outer">
         <div class="cert-border-inner">
-          
+
           <!-- Watermark (ir.png) -->
           <div class="cert-watermark"></div>
 
           <!-- Content Wrapper -->
           <div class="cert-content">
-            
+
             <!-- Header Section -->
             <div class="cert-header" style="position: relative; width: 100%; margin-bottom: 2mm; height: 18mm;">
               <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);">
                 <img src="/images/IE.png" class="cert-logo" alt="Indian Emblem" style="height: 18mm; margin: 0;">
               </div>
-              <div style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+              <div
+                style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                 <div class="cert-title-railway" style="font-size: 16pt; margin-bottom: 2px;">SOUTH COAST RAILWAY</div>
                 <div class="cert-title-railway" style="font-size: 12pt;">VISAKHAPATNAM DIVISION</div>
               </div>
@@ -48,7 +76,7 @@
                 <img src="/images/ir.png" class="cert-logo" alt="IR Emblem" style="height: 16.2mm; margin: 0;">
               </div>
             </div>
-            
+
             <div style="text-align: center; margin-bottom: 2mm;">
               <div class="cert-title-competency-container" style="margin: 0;">
                 <div class="cert-title-competency">
@@ -60,10 +88,15 @@
             <!-- Number and Date Meta line -->
             <div class="cert-meta-line">
               <div class="cert-no">
-                No. <span style="font-weight: 700; color: #800000;"><%= certificate.cert_number %></span>
+                No. <span style="font-weight: 700; color: #800000;">
+                  <%= certificate.cert_number %>
+                </span>
               </div>
               <div class="cert-date">
-                Date: <span style="font-weight: 700;"><%= new Date(certificate.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') %></span>
+                Date: <span style="font-weight: 700;">
+                  <%= new Date(certificate.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' ,
+                    day: '2-digit' , month: '2-digit' , year: 'numeric' }).replace(/\//g, '.' ) %>
+                </span>
               </div>
             </div>
 
@@ -75,76 +108,96 @@
               const slashIdx = rawDesig.lastIndexOf('/');
               let desigVal = rawDesig;
               let baseVal = 'VSKP'; // Fallback
-              
+
               if (slashIdx !== -1) {
-                desigVal = rawDesig.substring(0, slashIdx).trim();
-                baseVal = rawDesig.substring(slashIdx + 1).trim();
+              desigVal = rawDesig.substring(0, slashIdx).trim();
+              baseVal = rawDesig.substring(slashIdx + 1).trim();
               } else {
-                // Extract letters from start of ID as base (e.g., mipm7602 -> MIPM)
-                const match = (certificate.employee_id || '').match(/^[A-Za-z]+/);
-                if (match) {
-                  baseVal = match[0];
-                }
+              // Extract letters from start of ID as base (e.g., mipm7602 -> MIPM)
+              const match = (certificate.employee_id || '').match(/^[A-Za-z]+/);
+              if (match) {
+              baseVal = match[0];
               }
-              
+              }
+
               baseVal = baseVal.toUpperCase();
-            %>
-            <div class="cert-body">
-              <div class="cert-body-declaration" style="line-height: 2; margin-bottom: 3mm; text-align: justify;">
-                Certified that Sri/Smt./Kum. 
-                <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_name || '').toUpperCase() %></span>,
-                Designation <span class="cert-field-underline" style="padding: 0 4px;"><%= (desigVal || '').toUpperCase() %></span>, 
-                CMS ID: <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_id || '').toUpperCase() %></span> 
-                has been provided Training/Counselling on Automatic Signalling Territory. He is well conversant in working in Automatic Signalling System.
-              </div>
-
-              <div class="cert-validity">
-                This certificate is valid for a period of 06 months.
-                <span style="font-size: 10.5pt; font-weight: normal; color: #475569; margin-left: 2mm;">
-                  (Valid upto: <strong style="color: #1e293b;"><%= new Date(certificate.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') %></strong>)
-                </span>
-              </div>
-            </div>
-
-            <!-- Footer / Digitally Signed Mark & AA Details on the Right, QR Code on the Left -->
-            <div class="cert-footer" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; padding: 0 4mm;">
-              
-              <!-- QR Code Container -->
-              <div class="cert-qr-box" style="display: flex; flex-direction: column; align-items: center; gap: 1mm; margin-bottom: 1.5mm;">
-                <div style="font-size: 6.5pt; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-header);">Scan to Verify</div>
-                <img id="cert-qr-image" src="" alt="Verification QR Code" style="width: 20mm; height: 20mm; display: block; border: 1.5px solid #1e3a8a; padding: 1mm; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-              </div>
-
-              <!-- Signature Box -->
-              <div class="cert-signature-box">
-                <div class="digitally-signed-mark">Digitally Signed By</div>
-                <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
-                  <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature" style="display: block; margin-bottom: 0;">
-                  <% if (certificate.approved_at) { 
-                    const appParts = new Intl.DateTimeFormat('en-IN', {
-                      timeZone: 'Asia/Kolkata',
-                      year: 'numeric', month: '2-digit', day: '2-digit',
-                      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-                    }).formatToParts(new Date(certificate.approved_at));
-                    const appMap = new Map(appParts.map(p => [p.type, p.value]));
-                    const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')} ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
-                  %>
-                    <div class="cert-approved-on" style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
-                      <%= formattedAppDate %>
-                    </div>
-                  <% } %>
+              %>
+              <div class="cert-body">
+                <div class="cert-body-declaration" style="line-height: 2; margin-bottom: 3mm; text-align: justify;">
+                  This is Certified that Sri/Smt./Kum.
+                  <span class="cert-field-underline" style="padding: 0 4px;">
+                    <%= (certificate.employee_name || '' ).toUpperCase() %>
+                  </span>,
+                  Designation <span class="cert-field-underline" style="padding: 0 4px;">
+                    <%= (desigVal || '' ).toUpperCase() %>
+                  </span>,
+                  CMS ID: <span class="cert-field-underline" style="padding: 0 4px;">
+                    <%= (certificate.employee_id || '' ).toUpperCase() %>
+                  </span>
+                  has been provided Training/Counselling on Automatic Signalling Territory. He is well conversant in
+                  working in Automatic Signalling System.
                 </div>
-                
-                <div class="cert-sig-name"><%= certificate.aa_name %></div>
-                <div class="cert-sig-designation"><%= certificate.aa_designation %></div>
-                <div class="cert-sig-org">South Coast Railway</div>
+
+                <div class="cert-validity">
+                  This certificate is valid for a period of 06 months.
+                  <span style="font-size: 10.5pt; font-weight: normal; color: #475569; margin-left: 2mm;">
+                    (Valid upto: <strong style="color: #1e293b;">
+                      <%= new Date(certificate.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' ,
+                        day: '2-digit' , month: '2-digit' , year: 'numeric' }).replace(/\//g, '-' ) %>
+                    </strong>)
+                  </span>
+                </div>
               </div>
-            </div>
+
+              <!-- Footer / Digitally Signed Mark & AA Details on the Right, QR Code on the Left -->
+              <div class="cert-footer"
+                style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; padding: 0 4mm;">
+
+                <!-- QR Code Container -->
+                <div class="cert-qr-box"
+                  style="display: flex; flex-direction: column; align-items: center; gap: 1mm; margin-bottom: 1.5mm;">
+                  <div
+                    style="font-size: 6.5pt; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-header);">
+                    Scan to Verify</div>
+                  <img id="cert-qr-image" src="" alt="Verification QR Code"
+                    style="width: 20mm; height: 20mm; display: block; border: 1.5px solid #1e3a8a; padding: 1mm; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                </div>
+
+                <!-- Signature Box -->
+                <div class="cert-signature-box">
+                  <div class="digitally-signed-mark">Digitally Signed By</div>
+                  <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
+                    <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature"
+                      style="display: block; margin-bottom: 0;">
+                    <% if (certificate.approved_at) { const appParts=new Intl.DateTimeFormat('en-IN', {
+                      timeZone: 'Asia/Kolkata' , year: 'numeric' , month: '2-digit' , day: '2-digit' , hour: '2-digit' ,
+                      minute: '2-digit' , second: '2-digit' , hour12: false }).formatToParts(new
+                      Date(certificate.approved_at)); const appMap=new Map(appParts.map(p=> [p.type, p.value]));
+                      const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')}
+                      ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
+                      %>
+                      <div class="cert-approved-on"
+                        style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
+                        <%= formattedAppDate %>
+                      </div>
+                      <% } %>
+                  </div>
+
+                  <div class="cert-sig-name">
+                    <%= certificate.aa_name %>
+                  </div>
+                  <div class="cert-sig-designation">
+                    <%= certificate.aa_designation %>
+                  </div>
+                  <div class="cert-sig-org">South Coast Railway</div>
+                </div>
+              </div>
 
           </div><!-- /cert-content -->
 
         </div>
       </div>
+    </div>
     </div>
   </div>
 
@@ -154,9 +207,98 @@
     const pathParts = currentPath.split('/');
     const certId = pathParts[pathParts.length - 1];
     const downloadUrl = 'https://autocertify.vercel.app/certificate/download/' + certId;
+
+    // PDF generation and download logic (triggered by /download/ route auto-download)
+    function downloadPDF() {
+
+      // Show overlay
+      const overlay = document.getElementById('download-status-overlay');
+      const statusText = document.getElementById('download-status-text');
+      const spinner = overlay ? overlay.querySelector('.spinner') : null;
+      const closeBtn = document.getElementById('btn-close-overlay');
+      
+      if (overlay) {
+        overlay.style.display = 'flex';
+        if (spinner) spinner.style.display = 'block';
+        if (closeBtn) closeBtn.style.display = 'none';
+        if (statusText) statusText.innerHTML = 'Please wait while we compile your high-quality digital certificate. It will download automatically.';
+      }
+
+      const element = document.querySelector('.certificate-b5');
+      
+      // Force scale to 1 on document root so html2canvas captures at native resolution
+      document.documentElement.style.setProperty('--cert-scale', '1');
+
+      const opt = {
+        margin:       0,
+        filename:     '<%= certificate.cert_number.replace(/\//g, "-") %>.pdf',
+        image:        { type: 'jpeg', quality: 1.0 },
+        html2canvas:  { 
+          scale: 2.5, // Crisp resolution
+          useCORS: true,
+          logging: false
+        },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+
+      // Slight timeout to let browser layout refresh
+      return new Promise((resolve, reject) => {
+        setTimeout(() => {
+          html2pdf()
+            .set(opt)
+            .from(element)
+            .save()
+            .then(() => {
+              document.documentElement.style.removeProperty('--cert-scale');
+              
+              // If it was triggered manually, we can hide the overlay,
+              // but if it's the auto-download route, we keep it to show completion message
+              if (!window.location.pathname.includes('/download/')) {
+                if (overlay) overlay.style.display = 'none';
+              } else {
+                if (spinner) spinner.style.display = 'none';
+                if (statusText) statusText.innerHTML = '✅ <strong>Download complete!</strong> You can now close this tab/window.';
+                if (closeBtn) closeBtn.style.display = 'inline-block';
+              }
+              resolve();
+            })
+            .catch(err => {
+              console.error('PDF generation error:', err);
+              document.documentElement.style.removeProperty('--cert-scale');
+              
+              if (spinner) spinner.style.display = 'none';
+              if (statusText) statusText.innerHTML = '❌ <strong>Download failed.</strong> Please try refreshing the page or printing using the print button.';
+              if (closeBtn) closeBtn.style.display = 'inline-block';
+              
+              reject(err);
+            });
+        }, 400);
+      });
+    }
+
+    // Set QR code and trigger auto-download if on download path
+    const qrImg = document.getElementById('cert-qr-image');
+    const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(downloadUrl);
     
-    document.getElementById('cert-qr-image').src = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(downloadUrl);
+    qrImg.onload = function() {
+      handleAutoDownload();
+    };
+    qrImg.src = qrUrl;
+    
+    if (qrImg.complete) {
+      handleAutoDownload();
+    }
+
+    let autoDownloadTriggered = false;
+    function handleAutoDownload() {
+      if (autoDownloadTriggered) return;
+      if (currentPath.includes('/download/')) {
+        autoDownloadTriggered = true;
+        // Just trigger downloadPDF directly as it handles the overlay display
+        downloadPDF();
+      }
+    }
   </script>
 </body>
-</html>
 
+</html>

@@ -208,7 +208,7 @@
                   <circle cx="11" cy="11" r="8"></circle>
                   <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                Search Crew ID / Name
+                Search CMS ID / Name
                 <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(Type any 4 chars)</span>
               </label>
               <div style="position: relative;">
@@ -243,7 +243,7 @@
             </div>
 
             <div class="form-group">
-              <label for="emp-employee_id">Crew ID / Employee ID</label>
+              <label for="emp-employee_id">CMS ID</label>
               <input type="text" id="emp-employee_id" name="employee_id" class="form-control" 
                 placeholder="e.g. MIPM7602" required>
             </div>
@@ -287,7 +287,7 @@
             <input type="hidden" id="edit-emp-id" name="id">
             
             <div class="form-group">
-              <label for="edit-emp-employee_id">Crew ID / Employee ID</label>
+              <label for="edit-emp-employee_id">CMS ID</label>
               <input type="text" id="edit-emp-employee_id" name="employee_id" class="form-control" required>
             </div>
 
@@ -327,7 +327,7 @@
               <table>
                 <thead>
                   <tr>
-                    <th>Crew ID</th>
+                    <th>CMS ID</th>
                     <th>Name</th>
                     <th>Designation</th>
                     <th>Req. Date</th>
@@ -337,7 +337,7 @@
                 <tbody>
                   <% pendingEmployees.forEach(e => { %>
                     <tr>
-                      <td data-label="Crew ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
+                      <td data-label="CMS ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
                       <td data-label="Name" style="font-weight: 600;"><%= e.name %></td>
                       <td data-label="Designation"><%= e.designation %></td>
                       <td data-label="Req. Date"><%= formatIST(e.registered_at) %></td>
@@ -370,7 +370,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>Crew ID</th>
+                  <th>CMS ID</th>
                   <th>Name</th>
                   <th>Designation</th>
                   <th>Password</th>
@@ -388,7 +388,7 @@
                 <% } else { %>
                   <% approvedEmployees.forEach(e => { %>
                     <tr>
-                      <td data-label="Crew ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
+                      <td data-label="CMS ID" style="font-family: monospace; font-weight: bold;"><%= e.employee_id %></td>
                       <td data-label="Name" style="font-weight: 600;"><%= e.name %></td>
                       <td data-label="Designation"><%= e.designation %></td>
                       <td data-label="Password"><code><%= e.password %></code></td>
@@ -670,7 +670,7 @@
       const name = document.getElementById('emp-name').value.trim();
       const designation = document.getElementById('emp-designation').value.trim();
       if (!empId || !name || !designation) {
-        alert("Please provide the Crew ID, Full Name, and Designation of the employee.");
+        alert("Please provide the CMS ID, Full Name, and Designation of the employee.");
         return false;
       }
       return true;

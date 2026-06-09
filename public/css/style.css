@@ -1,6 +1,6 @@
 /* Premium CSS Design System - Railway Competency System */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Special+Elite&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Syncopate:wght@400;700&family=Special+Elite&display=swap');
 
 :root {
   --bg-color: #0b0f19;
@@ -19,6 +19,9 @@
 
 html {
   font-size: 95%;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
 }
 
 * {
@@ -31,6 +34,9 @@ body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   font-family: var(--font-sans);
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -76,14 +82,16 @@ header {
 }
 
 .brand h1 {
-  font-family: var(--font-header);
-  font-size: 1.25rem;
+  font-family: 'Syncopate', sans-serif;
+  font-size: 1.15rem;
   font-weight: 700;
+  text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: linear-gradient(135deg, #ffffff 0%, #a5b4fc 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 50%, #818cf8 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .nav-user {
@@ -263,25 +271,18 @@ select.form-control {
 }
 
 input[type="date"].form-control {
-  position: relative;
-  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 0.75rem center;
-  background-size: 1.1rem;
-  padding-right: 2.2rem;
+  padding-right: 1rem;
 }
 
-/* Hide native webkit calendar indicator so it doesn't overlap/duplicate */
+/* Style native webkit calendar indicator for dark mode and clean hover interaction */
 input[type="date"].form-control::-webkit-calendar-picker-indicator {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 2.5rem;
-  height: 100%;
-  padding: 0;
-  margin: 0;
   cursor: pointer;
-  opacity: 0;
+  filter: invert(0.7);
+  transition: filter 0.2s ease;
+}
+
+input[type="date"].form-control::-webkit-calendar-picker-indicator:hover {
+  filter: invert(1);
 }
 
 /* TABLES */
@@ -317,6 +318,11 @@ td {
   color: var(--text-primary);
   vertical-align: middle;
   white-space: nowrap;
+}
+
+td[data-label="Name"],
+td[data-label="Desig"] {
+  white-space: normal !important;
 }
 
 tr:last-child td {
@@ -536,6 +542,41 @@ tr:hover {
   gap: 1rem;
 }
 
+/* Fixed X close button for certificate view page */
+.cert-close-btn {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  color: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  transition: background 0.2s, transform 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.cert-close-btn:hover {
+  background: rgba(239, 68, 68, 0.85);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.35);
+}
+
+@media print {
+  .cert-close-btn {
+    display: none !important;
+  }
+}
+
 /* Scale Wrapper for mobile responsiveness */
 :root {
   --cert-scale: 1;
@@ -546,21 +587,25 @@ tr:hover {
     --cert-scale: 0.9;
   }
 }
+
 @media (max-width: 768px) {
   :root {
     --cert-scale: 0.8;
   }
 }
+
 @media (max-width: 640px) {
   :root {
     --cert-scale: 0.68;
   }
 }
+
 @media (max-width: 480px) {
   :root {
     --cert-scale: 0.48;
   }
 }
+
 @media (max-width: 380px) {
   :root {
     --cert-scale: 0.4;
@@ -591,7 +636,8 @@ tr:hover {
   flex-direction: column;
   justify-content: space-between;
   border-radius: 4px;
-  
+  color: #1e293b;
+
   /* Scale transformation for mobile responsiveness */
   transform: scale(var(--cert-scale));
   transform-origin: top center;
@@ -600,18 +646,23 @@ tr:hover {
 
 @media print {
   :root {
-    --cert-scale: 1 !important;
+    --cert-scale: 0.92 !important;
   }
+
   .cert-scale-wrapper {
-    height: auto !important;
-    display: block !important;
-    margin-bottom: 0 !important;
+    height: calc(148mm * var(--cert-scale)) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: flex-start !important;
+    margin-bottom: 4mm !important;
     page-break-inside: avoid !important;
   }
+
   .certificate-b5 {
-    transform: none !important;
+    transform: scale(var(--cert-scale)) !important;
+    transform-origin: top center !important;
     box-shadow: none !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
   }
 }
 
@@ -871,7 +922,8 @@ tr:hover {
   font-family: 'Special Elite', 'Courier New', Courier, monospace;
   font-size: 11pt;
   font-weight: 700;
-  color: #283593; /* Realistic Indigo stamp ink */
+  color: #283593;
+  /* Realistic Indigo stamp ink */
   text-transform: uppercase;
   letter-spacing: 0.5px;
   display: block;
@@ -1299,11 +1351,12 @@ tr:hover {
   .certificate-b5 {
     box-shadow: none !important;
     border: none !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     position: relative !important;
     top: 0 !important;
     left: 0 !important;
-    transform: none !important;
+    transform: scale(var(--cert-scale)) !important;
+    transform-origin: top center !important;
     page-break-inside: avoid !important;
     page-break-after: avoid !important;
     width: 210mm !important;
@@ -1312,7 +1365,7 @@ tr:hover {
 
   /* Force portrait orientation, no margins */
   @page {
-    size: portrait;
+    size: A4 portrait;
     margin: 0;
   }
 }

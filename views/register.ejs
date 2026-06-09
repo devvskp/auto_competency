@@ -38,7 +38,7 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
               </svg>
-              Search Crew ID / Name
+              Search CMS ID / Name
               <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 400;">(Type any 4 chars)</span>
             </label>
             <div style="position: relative;">
@@ -74,7 +74,7 @@
 
           <!-- Hidden/Readonly Employee Details Fields (Filled by autocomplete) -->
           <div class="form-group">
-            <label for="employee_id">Crew ID / Employee ID</label>
+            <label for="employee_id">CMS ID</label>
             <input type="text" id="employee_id" name="employee_id" class="form-control" 
               style="background: rgba(255,255,255,0.02); color: var(--text-secondary); cursor: not-allowed;" readonly placeholder="Selected from search" required>
           </div>
@@ -230,7 +230,7 @@
       const errEl = document.getElementById('password-error');
 
       if (!empId) {
-        alert("Please search and select your employee profile from the Crew ID search dropdown.");
+        alert("Please search and select your employee profile from the CMS ID search dropdown.");
         return false;
       }
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,18 +14,26 @@
         background: none !important;
       }
     }
+
     .page-break-after {
-      page-break-after: always;
+      page-break-after: always !important;
+      break-after: page !important;
     }
   </style>
 </head>
+
 <body style="background-color: #f1f5f9; padding: 0; margin: 0;">
-  
+
   <div class="cert-page-container">
     <!-- Action buttons (Hidden during printing) -->
     <div class="cert-actions">
       <button onclick="window.print()" class="btn btn-primary" style="font-size: 1rem; padding: 0.75rem 2rem;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
         Print Selected Certificates (<%= certificates.length %>)
       </button>
       <button onclick="window.close()" class="btn btn-secondary">
@@ -32,24 +41,28 @@
       </button>
     </div>
 
-    <% certificates.forEach((certificate, index) => { %>
-      <!-- Certificate Block B5 landscape size -->
-      <div class="certificate-b5 <%= index % 2 !== 0 ? 'page-break-after' : '' %>" style="margin-bottom: 2mm; page-break-inside: avoid;">
+    <% certificates.forEach((certificate, index)=> { %>
+      <!-- Scale wrapper to ensure correct layout and responsiveness on mobile/safari/iOS -->
+      <div class="cert-scale-wrapper <%= index % 2 !== 0 ? 'page-break-after' : '' %>"
+        style="margin-bottom: 2mm; page-break-inside: avoid;">
+        <!-- Certificate Block B5 landscape size -->
+        <div class="certificate-b5">
         <div class="cert-border-outer">
           <div class="cert-border-inner">
-            
+
             <!-- Watermark (ir.png) -->
             <div class="cert-watermark"></div>
 
             <!-- Content Wrapper -->
             <div class="cert-content">
-              
+
               <!-- Header Section -->
               <div class="cert-header" style="position: relative; width: 100%; margin-bottom: 2mm; height: 18mm;">
                 <div style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%);">
                   <img src="/images/IE.png" class="cert-logo" alt="Indian Emblem" style="height: 18mm; margin: 0;">
                 </div>
-                <div style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
+                <div
+                  style="width: 100%; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100%;">
                   <div class="cert-title-railway" style="font-size: 16pt; margin-bottom: 2px;">SOUTH COAST RAILWAY</div>
                   <div class="cert-title-railway" style="font-size: 12pt;">VISAKHAPATNAM DIVISION</div>
                 </div>
@@ -57,7 +70,7 @@
                   <img src="/images/ir.png" class="cert-logo" alt="IR Emblem" style="height: 16.2mm; margin: 0;">
                 </div>
               </div>
-              
+
               <div style="text-align: center; margin-bottom: 2mm;">
                 <div class="cert-title-competency-container" style="margin: 0;">
                   <div class="cert-title-competency">
@@ -69,21 +82,24 @@
               <!-- Number and Date Meta line -->
               <div class="cert-meta-line">
                 <div class="cert-no">
-                  No. <span style="font-weight: 700; color: #800000;"><%= certificate.cert_number %></span>
+                  No. <span style="font-weight: 700; color: #800000;">
+                    <%= certificate.cert_number %>
+                  </span>
                 </div>
                 <div class="cert-date">
-                  Date: <span style="font-weight: 700;"><%= new Date(certificate.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '.') %></span>
+                  Date: <span style="font-weight: 700;">
+                    <%= new Date(certificate.certified_date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' ,
+                      day: '2-digit' , month: '2-digit' , year: 'numeric' }).replace(/\//g, '.' ) %>
+                  </span>
                 </div>
               </div>
 
-              <!-- Body Details -->
               <% 
                 // Intelligent parsing of designation and base
                 const rawDesig = certificate.designation || '';
                 const slashIdx = rawDesig.lastIndexOf('/');
                 let desigVal = rawDesig;
                 let baseVal = 'VSKP'; // Fallback
-                
                 if (slashIdx !== -1) {
                   desigVal = rawDesig.substring(0, slashIdx).trim();
                   baseVal = rawDesig.substring(slashIdx + 1).trim();
@@ -93,65 +109,85 @@
                     baseVal = match[0];
                   }
                 }
-                
                 baseVal = baseVal.toUpperCase();
               %>
-              <div class="cert-body">
-                <div class="cert-body-declaration" style="line-height: 2; margin-bottom: 3mm; text-align: justify;">
-                  Certified that Sri/Smt./Kum. 
-                  <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_name || '').toUpperCase() %></span>,
-                  Designation <span class="cert-field-underline" style="padding: 0 4px;"><%= (desigVal || '').toUpperCase() %></span>, 
-                  CMS ID: <span class="cert-field-underline" style="padding: 0 4px;"><%= (certificate.employee_id || '').toUpperCase() %></span> 
-                  has been provided Training/Counselling on Automatic Signalling Territory. He is well conversant in working in Automatic Signalling System.
-                </div>
-
-                <div class="cert-validity">
-                  This certificate is valid for a period of 06 months.
-                  <span style="font-size: 10.5pt; font-weight: normal; color: #475569; margin-left: 2mm;">
-                    (Valid upto: <strong style="color: #1e293b;"><%= new Date(certificate.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-') %></strong>)
-                  </span>
-                </div>
-              </div>
-
-              <!-- Footer / Digitally Signed Mark & AA Details on the Right, QR Code on the Left -->
-              <div class="cert-footer" style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; padding: 0 4mm;">
-                
-                <!-- QR Code Container -->
-                <div class="cert-qr-box" style="display: flex; flex-direction: column; align-items: center; gap: 1mm; margin-bottom: 1.5mm;">
-                  <div style="font-size: 6.5pt; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-header);">Scan to Verify</div>
-                  <img class="cert-qr-image-batch" data-cert-id="<%= certificate.id %>" src="" alt="Verification QR Code" style="width: 20mm; height: 20mm; display: block; border: 1.5px solid #1e3a8a; padding: 1mm; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                </div>
-
-                <!-- Signature Box -->
-                <div class="cert-signature-box">
-                  <div class="digitally-signed-mark">Digitally Signed By</div>
-                  <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
-                    <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature" style="display: block; margin-bottom: 0;">
-                    <% if (certificate.approved_at) { 
-                      const appParts = new Intl.DateTimeFormat('en-IN', {
-                        timeZone: 'Asia/Kolkata',
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
-                      }).formatToParts(new Date(certificate.approved_at));
-                      const appMap = new Map(appParts.map(p => [p.type, p.value]));
-                      const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')} ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
-                    %>
-                      <div class="cert-approved-on" style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
-                        <%= formattedAppDate %>
-                      </div>
-                    <% } %>
+                <div class="cert-body">
+                  <div class="cert-body-declaration" style="line-height: 2; margin-bottom: 3mm; text-align: justify;">
+                    This is Certified that Sri/Smt./Kum.
+                    <span class="cert-field-underline" style="padding: 0 4px;">
+                      <%= (certificate.employee_name || '' ).toUpperCase() %>
+                    </span>,
+                    Designation <span class="cert-field-underline" style="padding: 0 4px;">
+                      <%= (desigVal || '' ).toUpperCase() %>
+                    </span>,
+                    CMS ID: <span class="cert-field-underline" style="padding: 0 4px;">
+                      <%= (certificate.employee_id || '' ).toUpperCase() %>
+                    </span>
+                    has been provided Training/Counselling on Automatic Signalling Territory. He is well conversant in
+                    working in Automatic Signalling System.
                   </div>
-                  <div class="cert-sig-name"><%= certificate.aa_name %></div>
-                  <div class="cert-sig-designation"><%= certificate.aa_designation %></div>
-                  <div class="cert-sig-org">South Coast Railway</div>
+
+                  <div class="cert-validity">
+                    This certificate is valid for a period of 06 months.
+                    <span style="font-size: 10.5pt; font-weight: normal; color: #475569; margin-left: 2mm;">
+                      (Valid upto: <strong style="color: #1e293b;">
+                        <%= new Date(certificate.valid_upto).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' ,
+                          day: '2-digit' , month: '2-digit' , year: 'numeric' }).replace(/\//g, '-' ) %>
+                      </strong>)
+                    </span>
+                  </div>
                 </div>
-              </div>
+
+                <!-- Footer / Digitally Signed Mark & AA Details on the Right, QR Code on the Left -->
+                <div class="cert-footer"
+                  style="display: flex; justify-content: space-between; align-items: flex-end; width: 100%; padding: 0 4mm;">
+
+                  <!-- QR Code Container -->
+                  <div class="cert-qr-box"
+                    style="display: flex; flex-direction: column; align-items: center; gap: 1mm; margin-bottom: 1.5mm;">
+                    <div
+                      style="font-size: 6.5pt; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; font-family: var(--font-header);">
+                      Scan to Verify</div>
+                    <img class="cert-qr-image-batch" data-cert-id="<%= certificate.id %>" src=""
+                      alt="Verification QR Code"
+                      style="width: 20mm; height: 20mm; display: block; border: 1.5px solid #1e3a8a; padding: 1mm; background: white; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                  </div>
+
+                  <!-- Signature Box -->
+                  <div class="cert-signature-box">
+                    <div class="digitally-signed-mark">Digitally Signed By</div>
+                    <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
+                      <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature"
+                        style="display: block; margin-bottom: 0;">
+                      <% if (certificate.approved_at) { const appParts=new Intl.DateTimeFormat('en-IN', {
+                        timeZone: 'Asia/Kolkata' , year: 'numeric' , month: '2-digit' , day: '2-digit' , hour: '2-digit'
+                        , minute: '2-digit' , second: '2-digit' , hour12: false }).formatToParts(new
+                        Date(certificate.approved_at)); const appMap=new Map(appParts.map(p=> [p.type, p.value]));
+                        const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')}
+                        ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
+                        %>
+                        <div class="cert-approved-on"
+                          style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
+                          <%= formattedAppDate %>
+                        </div>
+                        <% } %>
+                    </div>
+                    <div class="cert-sig-name">
+                      <%= certificate.aa_name %>
+                    </div>
+                    <div class="cert-sig-designation">
+                      <%= certificate.aa_designation %>
+                    </div>
+                    <div class="cert-sig-org">South Coast Railway</div>
+                  </div>
+                </div>
 
             </div><!-- /cert-content -->
           </div>
         </div>
       </div>
-    <% }) %>
+      </div>
+      <% }) %>
   </div>
 
   <script>
@@ -163,4 +199,5 @@
     });
   </script>
 </body>
+
 </html>
