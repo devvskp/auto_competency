@@ -130,7 +130,8 @@
                         </form>
                         <form action="/aa/certificates/reject/<%= c.id %>" method="POST" style="margin: 0;">
                           <button type="button" class="btn btn-danger"
-                            onclick="rejectCert(<%= c.id %>, '/aa/certificates/reject/<%= c.id %>')"
+                            data-id="<%= c.id %>"
+                            onclick="rejectCert(this.dataset.id, '/aa/certificates/reject/' + this.dataset.id)"
                             style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background: transparent; border: 1px solid rgba(239, 68, 68, 0.4); color: var(--danger-color);">
                             Reject
                           </button>
@@ -149,8 +150,8 @@
 
     <div class="card">
       <div class="card-title">
-        <span>Processed Certificates History</span>
-        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.6rem;">
+          <span>Processed Certificates History</span>
           <!-- Live indicator -->
           <span id="live-indicator" title="Auto-updating every 15 seconds"
             style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;font-weight:600;
@@ -160,6 +161,8 @@
                          animation:livePulse 2s ease-in-out infinite;display:inline-block;"></span>
             LIVE
           </span>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
           <button type="submit" form="print-batch-form" class="btn btn-secondary" title="Print selected certificates">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -318,7 +321,7 @@
                             </a>
                           </div>
                           <% } else { %>
-                            <button type="button" onclick="deleteRejected(<%= h.id %>)"
+                            <button type="button" data-id="<%= h.id %>" onclick="deleteRejected(this.dataset.id)"
                               style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;border-radius:6px;cursor:pointer;"
                               title="Delete this rejected entry">
                               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
