@@ -159,16 +159,10 @@
                     <div style="position: relative; display: inline-block; margin-bottom: 2mm;">
                       <img src="/images/aa_ds.png" class="cert-sig-image" alt="Digital Signature"
                         style="display: block; margin-bottom: 0;">
-                      <% if (certificate.approved_at) { const appParts=new Intl.DateTimeFormat('en-IN', {
-                        timeZone: 'Asia/Kolkata' , year: 'numeric' , month: '2-digit' , day: '2-digit' , hour: '2-digit'
-                        , minute: '2-digit' , second: '2-digit' , hour12: false }).formatToParts(new
-                        Date(certificate.approved_at)); const appMap=new Map(appParts.map(p=> [p.type, p.value]));
-                        const formattedAppDate = `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')}
-                        ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
-                        %>
+                        <% if (certificate.approved_at) { %>
                         <div class="cert-approved-on"
                           style="position: absolute; bottom: 0.5mm; left: 50%; transform: translateX(-50%); font-size: 4.5pt; color: #334155; font-family: monospace; text-align: center; font-weight: 700; white-space: nowrap; pointer-events: none;">
-                          <%= formattedAppDate %>
+                          <%= formatCertSignatureDate(certificate.approved_at) %>
                         </div>
                         <% } %>
                     </div>

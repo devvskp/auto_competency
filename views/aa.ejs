@@ -51,7 +51,17 @@
     <div class="card">
       <div class="card-title"
         style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-        <span>Pending Approvals</span>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span>Pending Approvals</span>
+          <span id="pending-live-indicator" title="Auto-updating every 15 seconds"
+            style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;font-weight:600;
+                   color:#34d399;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);
+                   border-radius:20px;padding:0.15rem 0.6rem;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#34d399;
+                         animation:livePulse 2s ease-in-out infinite;display:inline-block;"></span>
+            LIVE
+          </span>
+        </div>
         <button id="btn-bulk-approve" class="btn btn-success"
           style="padding: 0.5rem 1rem; font-size: 0.85rem; display: none;">
           Grant/Approve Selected (<span id="bulk-select-count">0</span>)
@@ -139,6 +149,15 @@
       <div class="card-title">
         <span>Processed Certificates History</span>
         <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <!-- Live indicator -->
+          <span id="live-indicator" title="Auto-updating every 15 seconds"
+            style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;font-weight:600;
+                   color:#34d399;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);
+                   border-radius:20px;padding:0.15rem 0.6rem;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#34d399;
+                         animation:livePulse 2s ease-in-out infinite;display:inline-block;"></span>
+            LIVE
+          </span>
           <button type="submit" form="print-batch-form" class="btn btn-secondary" title="Print selected certificates">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -297,9 +316,21 @@
                             </a>
                           </div>
                           <% } else { %>
-                            <span
-                              style="font-size: 0.8rem; color: var(--text-secondary); font-style: italic;">Unavailable</span>
-                            <% } %>
+                            <form action="/certificates/delete-rejected/<%= h.id %>" method="POST" style="margin:0;"
+                              onsubmit="return confirm('Permanently delete this rejected certificate entry? This cannot be undone.');">
+                              <button type="submit" class="btn btn-danger"
+                                style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;"
+                                title="Delete this rejected entry">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6l-1 14H6L5 6"></path>
+                                  <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                                  <path d="M9 6V4h6v2"></path>
+                                </svg>
+                                Delete
+                              </button>
+                            </form>
+                          <% } %>
                       </td>
                     </tr>
                     <% }) %>
@@ -589,7 +620,82 @@
       link.click();
       document.body.removeChild(link);
     }
+
+    // ========================================================
+    // LIVE AUTO-POLL — updates pending + history without reload
+    // ========================================================
+    (function startLivePolling() {
+      const POLL_INTERVAL_MS = 5000; // 5 seconds
+      let pollTimer = null;
+      let lastPendingCount = document.querySelectorAll('#select-all-pending ~ * .pending-checkbox, .pending-checkbox').length;
+
+      async function poll() {
+        try {
+          const res = await fetch('/api/poll/aa');
+          if (!res.ok) return;
+          const data = await res.json();
+          if (!data.ok) return;
+
+          const newPendingCount = data.pendingCount;
+
+          // --- Pending section: if count changed, reload page (avoids complex DOM surgery for approve/reject UI) ---
+          if (newPendingCount !== lastPendingCount) {
+            lastPendingCount = newPendingCount;
+            const diff = newPendingCount - (lastPendingCount === newPendingCount ? newPendingCount : lastPendingCount);
+            // New pending cert arrived — notify FA (notify sound + toast)
+            if (data.pendingCount > document.querySelectorAll('.pending-checkbox').length) {
+              showAlert('🔔 A new certificate request has arrived for approval!', 'success');
+            }
+            // Silently reload after a short delay so the user sees the toast first
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+
+          // --- History table: update status changes in-place ---
+          data.history.forEach(cert => {
+            const row = document.querySelector(`tr[data-cert-id-hist="${cert.id}"]`);
+            if (!row) return;
+
+            const currentStatus = row.getAttribute('data-status');
+            if (currentStatus === cert.status) return;
+
+            row.setAttribute('data-status', cert.status);
+
+            // Flash highlight
+            row.style.transition = 'background 0.3s ease';
+            row.style.background = 'rgba(99,102,241,0.12)';
+            setTimeout(() => { row.style.background = ''; }, 2000);
+          });
+
+          // Update certified badge count
+          const approvedCount = data.history.filter(c => c.status === 'APPROVED').length;
+          const goalNumber = document.querySelector('.goal-number');
+          if (goalNumber) goalNumber.textContent = approvedCount;
+
+        } catch (e) {
+          // Silently ignore
+        }
+
+        pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+      }
+
+      pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          clearTimeout(pollTimer);
+        } else {
+          pollTimer = setTimeout(poll, 500);
+        }
+      });
+    })();
   </script>
+  <style>
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+  </style>
 </body>
 
 </html>

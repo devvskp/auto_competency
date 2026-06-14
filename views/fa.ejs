@@ -66,7 +66,10 @@
               <input type="text" id="emp-search" class="form-control" autocomplete="off"
                 placeholder="Type ID or Name to search and auto-fill..."
                 style="padding-left: 1rem; padding-right: 2.75rem; border-style: dashed;"
-                oninput="filterEmployees(this.value)" onfocus="filterEmployees(this.value)" onblur="closeDropdown()">
+                oninput="filterEmployees(this.value)"
+                onfocus="filterEmployees(this.value)"
+                onblur="closeDropdown()"
+                onkeydown="handleSearchKey(event)">
               <button type="button" id="emp-clear-btn" onclick="clearSelection()" style="display: none; position: absolute; right: 0.75rem; top: 50%; transform: translateY(-50%);
                   background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3);
                   color: #ef4444; cursor: pointer; border-radius: 50%; width: 24px; height: 24px;
@@ -143,6 +146,15 @@
         <div class="card-title">
           <span>Forwarded Certificate History</span>
           <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <!-- Live indicator -->
+            <span id="live-indicator" title="Auto-updating every 15 seconds"
+              style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 600;
+                     color: #34d399; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25);
+                     border-radius: 20px; padding: 0.15rem 0.6rem;">
+              <span style="width:7px;height:7px;border-radius:50%;background:#34d399;
+                           animation: livePulse 2s ease-in-out infinite;display:inline-block;"></span>
+              LIVE
+            </span>
             <button type="submit" form="print-batch-form" class="btn btn-secondary" title="Print selected certificates">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -238,7 +250,7 @@
                       '0')}-${String(cDate.getDate()).padStart(2, '0')}`;
                       %>
                       <tr class="cert-row" data-name="<%= c.employee_name.toLowerCase() %>"
-                        data-date="<%= dataDateStr %>" data-status="<%= c.status %>">
+                        data-date="<%= dataDateStr %>" data-status="<%= c.status %>" data-cert-id="<%= c.id %>">
                         <td data-label="Select">
                           <% if (c.status==='APPROVED' ) { %>
                             <input type="checkbox" name="ids" value="<%= c.id %>" class="cert-checkbox">
@@ -307,10 +319,24 @@
                                 </svg>
                               </a>
                             </div>
+                            <% } else if (c.status === 'REJECTED') { %>
+                              <form action="/certificates/delete-rejected/<%= c.id %>" method="POST" style="margin:0;"
+                                onsubmit="return confirm('Permanently delete this rejected certificate entry? This cannot be undone.');">
+                                <button type="submit" class="btn btn-danger"
+                                  style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;"
+                                  title="Delete this rejected entry">
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6l-1 14H6L5 6"></path>
+                                    <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                                    <path d="M9 6V4h6v2"></path>
+                                  </svg>
+                                  Delete
+                                </button>
+                              </form>
                             <% } else { %>
-                              <span
-                                style="font-size: 0.8rem; color: var(--text-secondary); font-style: italic;">Unavailable</span>
-                              <% } %>
+                              <span style="font-size:0.8rem;color:var(--text-secondary);font-style:italic;">Unavailable</span>
+                            <% } %>
                         </td>
                       </tr>
                       <% }) %>
@@ -547,27 +573,73 @@
       })
       .catch(err => console.warn('Could not load employee data:', err));
 
+    let currentMatches = []; // tracks the currently visible dropdown matches
+    let highlightedIdx = -1;  // which dropdown row is keyboard-highlighted
+
+    function updateHighlight() {
+      const items = document.querySelectorAll('#emp-dropdown .emp-option');
+      items.forEach((el, i) => {
+        el.style.background = i === highlightedIdx ? 'rgba(59,130,246,0.18)' : 'transparent';
+      });
+    }
+
+    function handleSearchKey(e) {
+      const dropdown = document.getElementById('emp-dropdown');
+      const isOpen = dropdown && dropdown.style.display === 'block';
+
+      if (e.key === 'Enter') {
+        e.preventDefault(); // prevent form submit
+        if (!isOpen || currentMatches.length === 0) return;
+        // select highlighted row, or fall back to first
+        const pickIdx = highlightedIdx >= 0 ? highlightedIdx : 0;
+        selectEmployee(empData.indexOf(currentMatches[pickIdx]));
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (!isOpen) return;
+        highlightedIdx = Math.min(highlightedIdx + 1, currentMatches.length - 1);
+        updateHighlight();
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (!isOpen) return;
+        highlightedIdx = Math.max(highlightedIdx - 1, 0);
+        updateHighlight();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        closeDropdown();
+      }
+    }
+
     function filterEmployees(query) {
       const dropdown = document.getElementById('emp-dropdown');
+      highlightedIdx = -1; // reset keyboard highlight on new search
       query = query.trim().toUpperCase();
 
       if (!query || empData.length === 0) {
         dropdown.style.display = 'none';
+        currentMatches = [];
         return;
       }
 
       // Match by ID prefix or name contains query
-      const matches = empData.filter(e =>
+      currentMatches = empData.filter(e =>
         e.employee_id.includes(query) ||
         e.employee_name.toUpperCase().includes(query)
       ).slice(0, 15); // Show max 15 results
 
-      if (matches.length === 0) {
+      if (currentMatches.length === 0) {
         dropdown.style.display = 'none';
         return;
       }
 
-      dropdown.innerHTML = matches.map((e, idx) => `
+      dropdown.innerHTML = currentMatches.map((e) => `
         <div class="emp-option" onmousedown="selectEmployee(${empData.indexOf(e)})"
           style="padding: 0.65rem 1rem; cursor: pointer; border-bottom: 1px solid var(--border-color);
             display: flex; justify-content: space-between; align-items: center; transition: background 0.15s;"
@@ -667,7 +739,136 @@
       link.click();
       document.body.removeChild(link);
     }
+    // ========================================================
+    // LIVE AUTO-POLL — updates statuses without page reload
+    // ========================================================
+    (function startLivePolling() {
+      const POLL_INTERVAL_MS = 5000; // 5 seconds
+      let pollTimer = null;
+
+      // Status icon HTML generator
+      function getStatusIcon(status) {
+        if (status === 'PENDING') {
+          return `<span title="Pending Approval" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(251,146,60,0.12);border:1.5px solid rgba(251,146,60,0.45);color:#fb923c;cursor:help;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>`;
+        } else if (status === 'APPROVED') {
+          return `<span title="Approved" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(34,197,94,0.12);border:1.5px solid rgba(34,197,94,0.45);color:#22c55e;cursor:help;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></span>`;
+        } else {
+          return `<span title="Rejected" style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(239,68,68,0.12);border:1.5px solid rgba(239,68,68,0.45);color:#ef4444;cursor:help;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></span>`;
+        }
+      }
+
+      function getLinkHtml(status, id) {
+        if (status === 'APPROVED') {
+          return `<div style="display:flex;gap:0.35rem;align-items:center;flex-wrap:nowrap;">
+            <a href="/certificate/view/${id}" target="_blank" class="btn btn-secondary" style="padding:0.25rem 0.5rem;font-size:0.75rem;" title="View & Print">View</a>
+            <a href="/certificate/download/${id}" target="_blank" class="btn btn-primary" style="padding:0.25rem 0.5rem;font-size:0.75rem;gap:0.2rem;" title="Download PDF">
+              <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
+          </div>`;
+        }
+        return `<span style="font-size:0.8rem;color:var(--text-secondary);font-style:italic;">Unavailable</span>`;
+      }
+
+      async function poll() {
+        try {
+          const res = await fetch('/api/poll/fa');
+          if (!res.ok) return;
+          const data = await res.json();
+          if (!data.ok) return;
+
+          let approvedCount = 0;
+          let anyChanged = false;
+
+          data.certs.forEach(cert => {
+            if (cert.status === 'APPROVED') approvedCount++;
+
+            // Find the matching row by data-cert-id attribute (works for ALL statuses)
+            const row = document.querySelector(`tr[data-cert-id="${cert.id}"]`);
+            if (!row) return;
+
+            const currentStatus = row.getAttribute('data-status');
+            if (currentStatus === cert.status) return; // nothing changed
+
+            anyChanged = true;
+
+            // Update data attribute
+            row.setAttribute('data-status', cert.status);
+
+            // Update cert number cell (index 1)
+            const certNumCell = row.cells[1];
+            if (certNumCell && cert.cert_number) {
+              const parts = cert.cert_number.split('/');
+              const short = parts.length >= 6
+                ? parts.slice(-3).join('/')
+                : parts.slice(-2).join('/');
+              certNumCell.textContent = short;
+            }
+
+            // Update status badge cell (index 6)
+            const statusCell = row.cells[6];
+            if (statusCell) statusCell.innerHTML = getStatusIcon(cert.status);
+
+            // Update link cell (index 7) — enable checkbox if now APPROVED
+            const linkCell = row.cells[7];
+            if (linkCell) linkCell.innerHTML = getLinkHtml(cert.status, cert.id);
+
+            // Update checkbox cell (index 0)
+            const cbCell = row.cells[0];
+            if (cbCell) {
+              if (cert.status === 'APPROVED') {
+                cbCell.innerHTML = `<input type="checkbox" name="ids" value="${cert.id}" class="cert-checkbox">`;
+              } else {
+                cbCell.innerHTML = `<input type="checkbox" disabled>`;
+              }
+            }
+
+            // Flash highlight animation
+            row.style.transition = 'background 0.3s ease';
+            row.style.background = 'rgba(34,197,94,0.12)';
+            setTimeout(() => { row.style.background = ''; }, 2000);
+
+            // Show a toast
+            const name = row.cells[3] ? row.cells[3].textContent.trim() : 'Employee';
+            showAlert(`✅ ${name}'s certificate status updated to ${cert.status}.`, 'success');
+          });
+
+          // Update the "Certified" goal badge in the header
+          const goalNumber = document.querySelector('.goal-number');
+          if (goalNumber) goalNumber.textContent = approvedCount;
+
+        } catch (e) {
+          // Silently ignore network errors — server may briefly restart
+        }
+
+        // Schedule next poll
+        pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+      }
+
+      // Kick off
+      pollTimer = setTimeout(poll, POLL_INTERVAL_MS);
+
+      // Pause polling when tab is hidden, resume when visible again
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          clearTimeout(pollTimer);
+        } else {
+          pollTimer = setTimeout(poll, 500); // quick re-sync when tab becomes active
+        }
+      });
+    })();
   </script>
+  <style>
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+  </style>
 </body>
 
 </html>

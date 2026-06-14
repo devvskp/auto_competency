@@ -44,10 +44,29 @@ function formatIST(date, includeTime = false) {
   return d.toLocaleString('en-IN', opts).replace(/\//g, '-');
 }
 
+function formatCertSignatureDate(date) {
+  if (!date) return '';
+  const d = (date instanceof Date) ? date : new Date(date);
+  if (isNaN(d)) return '';
+  const appParts = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).formatToParts(d);
+  const appMap = new Map(appParts.map(p => [p.type, p.value]));
+  return `${appMap.get('day')}.${appMap.get('month')}.${appMap.get('year')} ${appMap.get('hour')}:${appMap.get('minute')}:${appMap.get('second')} IST`;
+}
+
 // Share session user and helpers with all templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   res.locals.formatIST = formatIST;
+  res.locals.formatCertSignatureDate = formatCertSignatureDate;
   next();
 });
 
@@ -276,7 +295,7 @@ app.post('/admin/employees/approve/:id', requireLogin, requireRole('admin'), asy
   const empId = req.params.id;
   try {
     await pool.query(
-      "UPDATE employees SET status = 'APPROVED', approved_at = (NOW() AT TIME ZONE 'Asia/Kolkata') WHERE id = $1",
+      "UPDATE employees SET status = 'APPROVED', approved_at = NOW() WHERE id = $1",
       [empId]
     );
     res.redirect('/admin?success=Employee approved successfully!');
@@ -302,7 +321,7 @@ app.post('/admin/employees/add', requireLogin, requireRole('admin'), async (req,
   try {
     await pool.query(
       `INSERT INTO employees (employee_id, name, designation, password, status, approved_at) 
-       VALUES ($1, $2, $3, $4, 'APPROVED', (NOW() AT TIME ZONE 'Asia/Kolkata'))`,
+       VALUES ($1, $2, $3, $4, 'APPROVED', NOW())`,
       [employee_id.trim().toUpperCase(), name.trim(), designation.trim(), password]
     );
     res.redirect('/admin?success=Employee added successfully!');
@@ -473,7 +492,7 @@ app.post('/aa/certificates/approve/:id', requireLogin, requireRole('AA'), async 
     // 3. Update the certificate row
     await client.query(
       `UPDATE certificates 
-       SET cert_number = $1, serial_number = $2, status = 'APPROVED', approved_by = $3, approved_at = (NOW() AT TIME ZONE 'Asia/Kolkata')
+       SET cert_number = $1, serial_number = $2, status = 'APPROVED', approved_by = $3, approved_at = NOW()
        WHERE id = $4`,
       [certNumber, nextSerial, req.session.user.username, certId]
     );
@@ -532,7 +551,7 @@ app.post('/aa/certificates/approve-batch', requireLogin, requireRole('AA'), asyn
       // Update the certificate row
       await client.query(
         `UPDATE certificates 
-         SET cert_number = $1, serial_number = $2, status = 'APPROVED', approved_by = $3, approved_at = (NOW() AT TIME ZONE 'Asia/Kolkata')
+         SET cert_number = $1, serial_number = $2, status = 'APPROVED', approved_by = $3, approved_at = NOW()
          WHERE id = $4`,
         [certNumber, nextSerial, req.session.user.username, certId]
       );
@@ -561,7 +580,7 @@ app.post('/aa/certificates/reject/:id', requireLogin, requireRole('AA'), async (
   try {
     const result = await pool.query(
       `UPDATE certificates 
-       SET status = 'REJECTED', approved_by = $1, approved_at = (NOW() AT TIME ZONE 'Asia/Kolkata')
+       SET status = 'REJECTED', approved_by = $1, approved_at = NOW()
        WHERE id = $2 AND status = 'PENDING'`,
       [req.session.user.username, certId]
     );
@@ -578,7 +597,42 @@ app.post('/aa/certificates/reject/:id', requireLogin, requireRole('AA'), async (
 });
 
 
-// --- CE (CERTIFIED EMPLOYEE) ROUTES ---
+// --- DELETE REJECTED CERTIFICATE (FA or AA) ---
+app.post('/certificates/delete-rejected/:id', requireLogin, async (req, res) => {
+  const certId = req.params.id;
+  const user = req.session.user;
+
+  // Only FA, AA, or admin roles may delete rejected entries
+  if (!['FA', 'AA', 'admin'].includes(user.user_type)) {
+    return res.status(403).send('Access Denied.');
+  }
+
+  try {
+    // Safety: only allow deletion of REJECTED certificates, and only if the
+    // logged-in user is the one who forwarded (FA) or rejected (AA) it, or is admin.
+    const result = await pool.query(
+      `DELETE FROM certificates
+       WHERE id = $1
+         AND status = 'REJECTED'
+         AND ($2 = 'admin' OR forwarded_by = $3 OR approved_by = $3)`,
+      [certId, user.user_type, user.username]
+    );
+
+    if (result.rowCount === 0) {
+      const redirectTo = user.user_type === 'AA' ? '/aa' : '/fa';
+      return res.redirect(`${redirectTo}?error=Certificate not found, not rejected, or you do not have permission to delete it.`);
+    }
+
+    const redirectTo = user.user_type === 'AA' ? '/aa' : '/fa';
+    res.redirect(`${redirectTo}?success=Rejected certificate entry deleted successfully.`);
+  } catch (err) {
+    console.error('Error deleting rejected certificate:', err);
+    const redirectTo = user.user_type === 'AA' ? '/aa' : '/fa';
+    res.redirect(`${redirectTo}?error=Error deleting certificate entry.`);
+  }
+});
+
+
 
 app.get('/ce', requireLogin, requireRole('CE'), async (req, res) => {
   try {
@@ -725,7 +779,48 @@ app.get('/certificate/print-batch', requireLogin, async (req, res) => {
 });
 
 
-// Generic error view (fallback)
+// --- LIVE POLL ENDPOINTS (Used by FA/AA pages for auto-update) ---
+
+// FA poll: returns status+cert_number for all certificates forwarded by logged-in FA
+app.get('/api/poll/fa', requireLogin, requireRole('FA'), async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, cert_number, status, approved_at
+       FROM certificates
+       WHERE forwarded_by = $1
+       ORDER BY created_at DESC`,
+      [req.session.user.username]
+    );
+    res.json({ ok: true, certs: result.rows });
+  } catch (err) {
+    res.json({ ok: false });
+  }
+});
+
+// AA poll: returns pending count + all processed cert statuses for logged-in AA
+app.get('/api/poll/aa', requireLogin, requireRole('AA'), async (req, res) => {
+  try {
+    const pendingResult = await pool.query(
+      `SELECT COUNT(*)::int as count FROM certificates WHERE status = 'PENDING'`
+    );
+    const histResult = await pool.query(
+      `SELECT id, cert_number, status, approved_at
+       FROM certificates
+       WHERE status != 'PENDING' AND approved_by = $1
+       ORDER BY approved_at DESC`,
+      [req.session.user.username]
+    );
+    res.json({
+      ok: true,
+      pendingCount: pendingResult.rows[0].count,
+      history: histResult.rows
+    });
+  } catch (err) {
+    res.json({ ok: false });
+  }
+});
+
+
 app.use((req, res) => {
   res.status(404).send('Page Not Found');
 });

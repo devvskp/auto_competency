@@ -39,8 +39,8 @@ async function setupDatabase() {
         designation VARCHAR(100) NOT NULL,
         password VARCHAR(100) NOT NULL,
         status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED')),
-        registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        approved_at TIMESTAMP
+        registered_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        approved_at TIMESTAMPTZ
       );
     `);
 
@@ -58,8 +58,8 @@ async function setupDatabase() {
         status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
         forwarded_by VARCHAR(50) REFERENCES users(username) ON DELETE SET NULL,
         approved_by VARCHAR(50) REFERENCES users(username) ON DELETE SET NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        approved_at TIMESTAMP
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        approved_at TIMESTAMPTZ
       );
     `);
 
