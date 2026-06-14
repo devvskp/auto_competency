@@ -16,11 +16,12 @@
       <h1>Railway Competency System</h1>
     </div>
     <div class="nav-user">
-      <div class="user-tag">
-        <span class="user-name-text">
-          <%= user.name %>
-        </span>
-        <span class="role-badge">Trainer / FA</span>
+      <div class="user-tag" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.15rem; background: none; border: none; padding: 0;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="user-name-text" style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);"><%= user.name %></span>
+          <span class="role-badge" style="background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%); color: white; font-weight: 800; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.7rem; letter-spacing: 0.5px; border: none; box-shadow: 0 2px 8px rgba(234, 92, 12, 0.2); text-transform: uppercase;"><%= user.user_type %></span>
+        </div>
+        <span style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 500;"><%= user.designation %></span>
       </div>
       <a href="/logout" class="btn-logout">Logout</a>
     </div>
