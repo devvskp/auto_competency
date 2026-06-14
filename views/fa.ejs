@@ -320,20 +320,18 @@
                               </a>
                             </div>
                             <% } else if (c.status === 'REJECTED') { %>
-                              <form action="/certificates/delete-rejected/<%= c.id %>" method="POST" style="margin:0;"
-                                onsubmit="return confirm('Permanently delete this rejected certificate entry? This cannot be undone.');">
-                                <button type="submit" class="btn btn-danger"
-                                  style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;"
-                                  title="Delete this rejected entry">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polyline points="3 6 5 6 21 6"></polyline>
-                                    <path d="M19 6l-1 14H6L5 6"></path>
-                                    <path d="M10 11v6"></path><path d="M14 11v6"></path>
-                                    <path d="M9 6V4h6v2"></path>
-                                  </svg>
-                                  Delete
-                                </button>
-                              </form>
+                              <button type="button"
+                                onclick="deleteRejected(<%= c.id %>)"
+                                style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;border-radius:6px;cursor:pointer;"
+                                title="Delete this rejected entry">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                  <polyline points="3 6 5 6 21 6"></polyline>
+                                  <path d="M19 6l-1 14H6L5 6"></path>
+                                  <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                                  <path d="M9 6V4h6v2"></path>
+                                </svg>
+                                Delete
+                              </button>
                             <% } else { %>
                               <span style="font-size:0.8rem;color:var(--text-secondary);font-style:italic;">Unavailable</span>
                             <% } %>
@@ -344,10 +342,35 @@
               </tbody>
             </table>
           </form>
+
+          <!-- Hidden delete form — placed OUTSIDE print-batch-form to avoid nesting -->
+          <form id="delete-rejected-form" action="" method="POST" style="display:none;"></form>
         </div>
       </div>
     </div>
   </main>
+
+  <!-- Themed Confirmation Modal -->
+  <div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);" onclick="_confirmCancel()"></div>
+    <div id="confirm-modal-box" style="position:relative;background:linear-gradient(135deg,rgba(17,24,39,0.98),rgba(30,41,59,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:2rem 2rem 1.5rem;max-width:420px;width:90%;box-shadow:0 25px 60px rgba(0,0,0,0.6);animation:modalIn 0.2s cubic-bezier(0.34,1.56,0.64,1);">
+      <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.25rem;">
+        <div id="confirm-icon" style="flex-shrink:0;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;"></div>
+        <div>
+          <div id="confirm-title" style="font-size:1.05rem;font-weight:700;color:var(--text-primary);margin-bottom:0.35rem;"></div>
+          <div id="confirm-message" style="font-size:0.88rem;color:var(--text-secondary);line-height:1.5;"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem;">
+        <button id="confirm-cancel-btn" onclick="_confirmCancel()"
+          style="padding:0.5rem 1.25rem;font-size:0.88rem;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:var(--text-secondary);border-radius:8px;cursor:pointer;transition:all 0.2s;"
+          onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='var(--text-primary)'"
+          onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='var(--text-secondary)'">Cancel</button>
+        <button id="confirm-ok-btn" onclick="_confirmOk()"
+          style="padding:0.5rem 1.25rem;font-size:0.88rem;border:none;border-radius:8px;cursor:pointer;font-weight:600;transition:all 0.2s;"></button>
+      </div>
+    </div>
+  </div>
 
   <footer class="app-footer">
     Version 1.0 @ copyright 2026 by KOMMARA SURESH
@@ -419,6 +442,71 @@
     if (errorMsg) {
       showAlert(errorMsg, 'danger');
       window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // ============================================================
+    // Themed confirmation modal — replaces native browser confirm()
+    // ============================================================
+    let _confirmCallback = null;
+
+    function showConfirm(message, onConfirm, { title = 'Confirm Action', type = 'danger' } = {}) {
+      _confirmCallback = onConfirm;
+
+      const modal = document.getElementById('confirm-modal');
+      document.getElementById('confirm-title').textContent = title;
+      document.getElementById('confirm-message').textContent = message;
+
+      const iconEl = document.getElementById('confirm-icon');
+      const okBtn = document.getElementById('confirm-ok-btn');
+
+      if (type === 'danger') {
+        iconEl.style.background = 'rgba(239,68,68,0.15)';
+        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+        okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
+        okBtn.textContent = 'Delete';
+      } else if (type === 'warning') {
+        iconEl.style.background = 'rgba(251,146,60,0.15)';
+        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+        okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#fb923c,#ea580c);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
+        okBtn.textContent = 'Confirm';
+      } else {
+        iconEl.style.background = 'rgba(59,130,246,0.15)';
+        iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+        okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
+        okBtn.textContent = 'Confirm';
+      }
+
+      modal.style.display = 'flex';
+      document.getElementById('confirm-ok-btn').focus();
+    }
+
+    function _confirmOk() {
+      document.getElementById('confirm-modal').style.display = 'none';
+      if (typeof _confirmCallback === 'function') _confirmCallback();
+      _confirmCallback = null;
+    }
+
+    function _confirmCancel() {
+      document.getElementById('confirm-modal').style.display = 'none';
+      _confirmCallback = null;
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') _confirmCancel();
+    });
+
+    // Delete a rejected certificate entry via the hidden form (avoids nested-form conflict)
+    function deleteRejected(certId) {
+      showConfirm(
+        'This rejected entry will be permanently removed from the database. This action cannot be undone.',
+        () => {
+          const form = document.getElementById('delete-rejected-form');
+          form.action = '/certificates/delete-rejected/' + certId;
+          form.submit();
+        },
+        { title: 'Delete Rejected Certificate?', type: 'danger' }
+      );
     }
 
     function toggleAll(source) {
@@ -772,6 +860,19 @@
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></a>
           </div>`;
         }
+        if (status === 'REJECTED') {
+          return `<button type="button" onclick="deleteRejected(${id})"
+            style="padding:0.25rem 0.6rem;font-size:0.75rem;display:inline-flex;align-items:center;gap:0.3rem;background:transparent;border:1px solid rgba(239,68,68,0.4);color:#ef4444;border-radius:6px;cursor:pointer;"
+            title="Delete this rejected entry">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6l-1 14H6L5 6"></path>
+              <path d="M10 11v6"></path><path d="M14 11v6"></path>
+              <path d="M9 6V4h6v2"></path>
+            </svg>
+            Delete
+          </button>`;
+        }
         return `<span style="font-size:0.8rem;color:var(--text-secondary);font-style:italic;">Unavailable</span>`;
       }
 
@@ -828,14 +929,21 @@
               }
             }
 
-            // Flash highlight animation
+            // Flash highlight — red for REJECTED, green for APPROVED
+            const flashColor = cert.status === 'APPROVED'
+              ? 'rgba(34,197,94,0.12)'
+              : cert.status === 'REJECTED'
+                ? 'rgba(239,68,68,0.12)'
+                : 'rgba(251,146,60,0.08)';
             row.style.transition = 'background 0.3s ease';
-            row.style.background = 'rgba(34,197,94,0.12)';
-            setTimeout(() => { row.style.background = ''; }, 2000);
+            row.style.background = flashColor;
+            setTimeout(() => { row.style.background = ''; }, 2500);
 
             // Show a toast
             const name = row.cells[3] ? row.cells[3].textContent.trim() : 'Employee';
-            showAlert(`✅ ${name}'s certificate status updated to ${cert.status}.`, 'success');
+            const emoji = cert.status === 'APPROVED' ? '✅' : cert.status === 'REJECTED' ? '❌' : 'ℹ️';
+            const alertType = cert.status === 'REJECTED' ? 'danger' : 'success';
+            showAlert(`${emoji} ${name}'s certificate has been ${cert.status.toLowerCase()}.`, alertType);
           });
 
           // Update the "Certified" goal badge in the header
@@ -867,6 +975,10 @@
     @keyframes livePulse {
       0%, 100% { opacity: 1; transform: scale(1); }
       50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.88) translateY(12px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
     }
   </style>
 </body>
