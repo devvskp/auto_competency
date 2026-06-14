@@ -170,7 +170,7 @@
               <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
               <rect x="6" y="14" width="12" height="8"></rect>
             </svg>
-            Print Selected
+            Print <span class="hide-mobile">Selected</span>
           </button>
           <button type="button" onclick="downloadSelectedBatch()" class="btn btn-success" title="Download selected as PDF" style="gap: 0.4rem;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -179,7 +179,7 @@
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            Download PDF
+            <span class="hide-mobile">Download</span> PDF
           </button>
           <button type="button" id="download-approved-btn" data-certs="<%- JSON.stringify(historyCertificates.filter(h => h.status === 'APPROVED')).replace(/"/g, '&quot;') %>" onclick="downloadApprovedCSV()" class="btn btn-primary"
             title="Download all approved certificates as CSV" style="gap: 0.4rem; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
@@ -189,7 +189,7 @@
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
             </svg>
-            Approved CSV
+            <span class="hide-mobile">Approved</span> CSV
           </button>
         </div>
       </div>
@@ -228,7 +228,7 @@
       </div>
 
       <div class="table-container">
-        <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank">
+        <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank" onsubmit="return validatePrintForm(event)">
           <table>
             <thead>
               <tr>
@@ -443,13 +443,18 @@
     // ============================================================
     let _confirmCallback = null;
 
-    function showConfirm(message, onConfirm, { title = 'Confirm Action', type = 'danger', okLabel } = {}) {
+    function showConfirm(message, onConfirm, { title = 'Confirm Action', type = 'danger', okLabel, hideCancel = false } = {}) {
       _confirmCallback = onConfirm;
       document.getElementById('confirm-title').textContent = title;
       document.getElementById('confirm-message').textContent = message;
 
       const iconEl = document.getElementById('confirm-icon');
       const okBtn  = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+      if (cancelBtn) {
+        cancelBtn.style.display = hideCancel ? 'none' : 'inline-block';
+      }
 
       if (type === 'danger') {
         iconEl.style.background = 'rgba(239,68,68,0.15)';
@@ -603,11 +608,21 @@
     function downloadSelectedBatch() {
       const checked = Array.from(document.querySelectorAll('.cert-checkbox:checked'));
       if (checked.length === 0) {
-        showAlert('Please select at least one certificate to download.', 'danger');
+        showConfirm('No certificates selected.', null, { title: 'No Selection', type: 'danger', okLabel: 'OK', hideCancel: true });
         return;
       }
       const params = checked.map(cb => 'ids=' + encodeURIComponent(cb.value)).join('&');
       window.open('/certificate/print-batch?' + params, '_blank');
+    }
+
+    function validatePrintForm(event) {
+      const checked = Array.from(document.querySelectorAll('.cert-checkbox:checked'));
+      if (checked.length === 0) {
+        event.preventDefault();
+        showConfirm('No certificates selected.', null, { title: 'No Selection', type: 'danger', okLabel: 'OK', hideCancel: true });
+        return false;
+      }
+      return true;
     }
 
     function applyFilters() {

@@ -164,7 +164,7 @@
                 <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                 <rect x="6" y="14" width="12" height="8"></rect>
               </svg>
-              Print Selected
+              Print <span class="hide-mobile">Selected</span>
             </button>
             <button type="button" onclick="downloadSelectedBatch()" class="btn btn-success"
               title="Download selected as PDF" style="gap: 0.4rem;">
@@ -174,7 +174,7 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              Download PDF
+              <span class="hide-mobile">Download</span> PDF
             </button>
             <button type="button" id="download-approved-btn" data-certs="<%- JSON.stringify(certificates.filter(c => c.status === 'APPROVED')).replace(/"/g, '&quot;') %>" onclick="downloadApprovedCSV()" class="btn btn-primary"
               title="Download all approved certificates as CSV" style="gap: 0.4rem; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); box-shadow: 0 4px 12px rgba(99,102,241,0.3);">
@@ -184,7 +184,7 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              Approved CSV
+              <span class="hide-mobile">Approved</span> CSV
             </button>
           </div>
         </div>
@@ -224,7 +224,7 @@
         </div>
 
         <div class="table-container">
-          <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank">
+          <form id="print-batch-form" action="/certificate/print-batch" method="GET" target="_blank" onsubmit="return validatePrintForm(event)">
             <table>
               <thead>
                 <tr>
@@ -452,7 +452,7 @@
     // ============================================================
     let _confirmCallback = null;
 
-    function showConfirm(message, onConfirm, { title = 'Confirm Action', type = 'danger' } = {}) {
+    function showConfirm(message, onConfirm, { title = 'Confirm Action', type = 'danger', okLabel, hideCancel = false } = {}) {
       _confirmCallback = onConfirm;
 
       const modal = document.getElementById('confirm-modal');
@@ -461,26 +461,31 @@
 
       const iconEl = document.getElementById('confirm-icon');
       const okBtn = document.getElementById('confirm-ok-btn');
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+      if (cancelBtn) {
+        cancelBtn.style.display = hideCancel ? 'none' : 'inline-block';
+      }
 
       if (type === 'danger') {
         iconEl.style.background = 'rgba(239,68,68,0.15)';
         iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
         okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
-        okBtn.textContent = 'Delete';
+        okBtn.textContent = okLabel || 'Delete';
       } else if (type === 'warning') {
         iconEl.style.background = 'rgba(251,146,60,0.15)';
         iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
         okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#fb923c,#ea580c);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
-        okBtn.textContent = 'Confirm';
+        okBtn.textContent = okLabel || 'Confirm';
       } else {
         iconEl.style.background = 'rgba(59,130,246,0.15)';
         iconEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
         okBtn.style.cssText = 'padding:0.5rem 1.25rem;font-size:0.88rem;background:linear-gradient(135deg,#3b82f6,#2563eb);border:none;border-radius:8px;cursor:pointer;font-weight:600;color:#fff;transition:all 0.2s;';
-        okBtn.textContent = 'Confirm';
+        okBtn.textContent = okLabel || 'Confirm';
       }
 
       modal.style.display = 'flex';
-      document.getElementById('confirm-ok-btn').focus();
+      okBtn.focus();
     }
 
     function _confirmOk() {
@@ -525,11 +530,21 @@
     function downloadSelectedBatch() {
       const checked = Array.from(document.querySelectorAll('.cert-checkbox:checked'));
       if (checked.length === 0) {
-        showAlert('Please select at least one certificate to download.', 'danger');
+        showConfirm('No certificates selected.', null, { title: 'No Selection', type: 'danger', okLabel: 'OK', hideCancel: true });
         return;
       }
       const params = checked.map(cb => 'ids=' + encodeURIComponent(cb.value)).join('&');
       window.open('/certificate/print-batch?' + params, '_blank');
+    }
+
+    function validatePrintForm(event) {
+      const checked = Array.from(document.querySelectorAll('.cert-checkbox:checked'));
+      if (checked.length === 0) {
+        event.preventDefault();
+        showConfirm('No certificates selected.', null, { title: 'No Selection', type: 'danger', okLabel: 'OK', hideCancel: true });
+        return false;
+      }
+      return true;
     }
 
     function applyFilters() {
