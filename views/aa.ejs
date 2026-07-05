@@ -257,8 +257,10 @@
                     const dataDateStr = `${cDate.getFullYear()}-${String(cDate.getMonth() + 1).padStart(2,
                     '0')}-${String(cDate.getDate()).padStart(2, '0')}`;
                     %>
-                    <tr class="cert-row" data-name="<%= h.employee_name.toLowerCase() %>" data-date="<%= dataDateStr %>"
-                      data-status="<%= h.status %>">
+                    <tr class="cert-row" data-name="<%= h.employee_name.toLowerCase() %>"
+                      data-cms-id="<%= (h.employee_id || '').toLowerCase() %>"
+                      data-date="<%= dataDateStr %>"
+                      data-status="<%= h.status %>" data-cert-id-hist="<%= h.id %>">
                       <td data-label="Select">
                         <% if (h.status==='APPROVED' ) { %>
                           <input type="checkbox" name="ids" value="<%= h.id %>" class="cert-checkbox">
@@ -636,6 +638,7 @@
 
       rows.forEach(row => {
         const name = row.getAttribute('data-name') || '';
+        const cmsId = row.getAttribute('data-cms-id') || '';
         const dateStr = row.getAttribute('data-date') || '';
         const status = row.getAttribute('data-status') || '';
 
@@ -644,7 +647,7 @@
         let matchStatus = true;
 
         if (nameInput) {
-          matchName = name.includes(nameInput);
+          matchName = name.includes(nameInput) || cmsId.includes(nameInput);
         }
 
         if (dateFromVal) {

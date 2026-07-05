@@ -234,6 +234,7 @@
                   <th>CMS ID</th>
                   <th>Name</th>
                   <th>Desig</th>
+                  <th>Forwarded By</th>
                   <th>C Date</th>
                   <th>Status</th>
                   <th>Link</th>
@@ -242,7 +243,7 @@
               <tbody>
                 <% if (certificates.length===0) { %>
                   <tr>
-                    <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                    <td colspan="9" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
                       No forwarded certificate records found.
                     </td>
                   </tr>
@@ -253,6 +254,7 @@
                       '0')}-${String(cDate.getDate()).padStart(2, '0')}`;
                       %>
                       <tr class="cert-row" data-name="<%= c.employee_name.toLowerCase() %>"
+                        data-cms-id="<%= (c.employee_id || '').toLowerCase() %>"
                         data-date="<%= dataDateStr %>" data-status="<%= c.status %>" data-cert-id="<%= c.id %>">
                         <td data-label="Select">
                           <% if (c.status==='APPROVED' ) { %>
@@ -275,6 +277,9 @@
                         </td>
                         <td data-label="Desig">
                           <%= c.designation %>
+                        </td>
+                        <td data-label="Forwarded By">
+                          <%= c.forwarded_by_name || c.forwarded_by || 'N/A' %>
                         </td>
                         <td data-label="C Date">
                           <%= formatIST(c.certified_date) %>
@@ -558,6 +563,7 @@
 
       rows.forEach(row => {
         const name = row.getAttribute('data-name') || '';
+        const cmsId = row.getAttribute('data-cms-id') || '';
         const dateStr = row.getAttribute('data-date') || '';
         const status = row.getAttribute('data-status') || '';
 
@@ -566,7 +572,7 @@
         let matchStatus = true;
 
         if (nameInput) {
-          matchName = name.includes(nameInput);
+          matchName = name.includes(nameInput) || cmsId.includes(nameInput);
         }
 
         if (dateFromVal) {
@@ -595,7 +601,7 @@
             const tr = document.createElement('tr');
             tr.id = 'no-filtered-records-row';
             tr.innerHTML = `
-              <td colspan="7" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+              <td colspan="8" style="text-align: center; color: var(--text-secondary); padding: 2rem;">
                 No matching certificate records found for the applied filters.
               </td>
             `;
@@ -930,12 +936,12 @@
               certNumCell.textContent = short;
             }
 
-            // Update status badge cell (index 6)
-            const statusCell = row.cells[6];
+            // Update status badge cell (index 7)
+            const statusCell = row.cells[7];
             if (statusCell) statusCell.innerHTML = getStatusIcon(cert.status);
 
-            // Update link cell (index 7) — enable checkbox if now APPROVED
-            const linkCell = row.cells[7];
+            // Update link cell (index 8) — enable checkbox if now APPROVED
+            const linkCell = row.cells[8];
             if (linkCell) linkCell.innerHTML = getLinkHtml(cert.status, cert.id);
 
             // Update checkbox cell (index 0)

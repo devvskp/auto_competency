@@ -363,10 +363,12 @@ app.post('/admin/employees/delete', requireLogin, requireRole('admin'), async (r
 
 app.get('/fa', requireLogin, requireRole('FA'), async (req, res) => {
   try {
-    // Get all certificates forwarded by this user
+    // Get all certificates
     const certsResult = await pool.query(
-      'SELECT * FROM certificates WHERE forwarded_by = $1 ORDER BY created_at DESC',
-      [req.session.user.username]
+      `SELECT c.*, f.name as forwarded_by_name 
+       FROM certificates c 
+       LEFT JOIN users f ON c.forwarded_by = f.username 
+       ORDER BY c.created_at DESC`
     );
 
     const success = req.query.success || null;
@@ -429,14 +431,13 @@ app.get('/aa', requireLogin, requireRole('AA'), async (req, res) => {
        ORDER BY c.created_at ASC`
     );
 
-    // Get all certificates approved/rejected by this AA
+    // Get all certificates approved/rejected
     const historyResult = await pool.query(
       `SELECT c.*, f.name as forwarded_by_name 
        FROM certificates c 
        LEFT JOIN users f ON c.forwarded_by = f.username 
-       WHERE c.status != 'PENDING' AND c.approved_by = $1
-       ORDER BY c.approved_at DESC`,
-      [req.session.user.username]
+       WHERE c.status != 'PENDING'
+       ORDER BY c.approved_at DESC`
     );
 
     const success = req.query.success || null;
@@ -609,13 +610,12 @@ app.post('/certificates/delete-rejected/:id', requireLogin, async (req, res) => 
 
   try {
     // Safety: only allow deletion of REJECTED certificates, and only if the
-    // logged-in user is the one who forwarded (FA) or rejected (AA) it, or is admin.
+    // logged-in user is an FA, AA, or admin.
     const result = await pool.query(
       `DELETE FROM certificates
        WHERE id = $1
-         AND status = 'REJECTED'
-         AND ($2 = 'admin' OR forwarded_by = $3 OR approved_by = $3)`,
-      [certId, user.user_type, user.username]
+         AND status = 'REJECTED'`,
+      [certId]
     );
 
     if (result.rowCount === 0) {
@@ -715,13 +715,13 @@ app.get('/certificate/view/:id', requireLogin, async (req, res) => {
 
     const certificate = result.rows[0];
 
-    // Authorization: User must be Admin, FA who forwarded, AA who approved, or the CE employee themselves.
+    // Authorization: User must be Admin, any FA, any AA, or the CE employee themselves.
     const currUser = req.session.user;
     if (
       currUser.user_type !== 'admin' &&
-      currUser.username !== certificate.employee_id &&
-      currUser.username !== certificate.forwarded_by &&
-      currUser.username !== certificate.approved_by
+      currUser.user_type !== 'FA' &&
+      currUser.user_type !== 'AA' &&
+      currUser.username !== certificate.employee_id
     ) {
       return res.status(403).send('Unauthorized: You are not permitted to view this certificate.');
     }
@@ -781,15 +781,13 @@ app.get('/certificate/print-batch', requireLogin, async (req, res) => {
 
 // --- LIVE POLL ENDPOINTS (Used by FA/AA pages for auto-update) ---
 
-// FA poll: returns status+cert_number for all certificates forwarded by logged-in FA
+// FA poll: returns status+cert_number for all certificates
 app.get('/api/poll/fa', requireLogin, requireRole('FA'), async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT id, cert_number, status, approved_at
        FROM certificates
-       WHERE forwarded_by = $1
-       ORDER BY created_at DESC`,
-      [req.session.user.username]
+       ORDER BY created_at DESC`
     );
     res.json({ ok: true, certs: result.rows });
   } catch (err) {
@@ -797,7 +795,7 @@ app.get('/api/poll/fa', requireLogin, requireRole('FA'), async (req, res) => {
   }
 });
 
-// AA poll: returns pending count + all processed cert statuses for logged-in AA
+// AA poll: returns pending count + all processed cert statuses
 app.get('/api/poll/aa', requireLogin, requireRole('AA'), async (req, res) => {
   try {
     const pendingResult = await pool.query(
@@ -806,9 +804,8 @@ app.get('/api/poll/aa', requireLogin, requireRole('AA'), async (req, res) => {
     const histResult = await pool.query(
       `SELECT id, cert_number, status, approved_at
        FROM certificates
-       WHERE status != 'PENDING' AND approved_by = $1
-       ORDER BY approved_at DESC`,
-      [req.session.user.username]
+       WHERE status != 'PENDING'
+       ORDER BY approved_at DESC`
     );
     res.json({
       ok: true,
